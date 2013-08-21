@@ -33,6 +33,55 @@ SUCH DAMAGE.
 
 #include <stdio.h>
 
+const char* protocol_header_filename;
+const char* protocol_impl_filename;
+const char* protocol_name;
+const char* prologue = "";
+const char* definitions = "";
+const char* epilogue = "";
+
+typedef struct field_s {
+  const char* type;
+  const char* name;
+  struct field_s* next;
+} field;
+
+typedef enum {
+  mit_recursive,
+  mit_recursive_fold,
+  mit_visit_parent,
+  mit_returns_0,
+  mit_returns_1,
+  mit_returns_this,
+  mit_does_nothing,
+  mit_undefined,
+  mit_custom
+} method_impl_type;
+
+typedef struct {
+  method_impl_type type;
+  const char* parm;
+} method_impl;
+
+typedef struct method_s {
+  const char* name;
+  const char* return_type;
+  method_impl default_impl;
+  field* fields;
+  struct method_s* next;
+} method;
+
+method* methods;
+
+typedef struct element_s {
+  const char* name;
+  field* members;
+  method_impl* implementations;
+  struct element_s* next;
+} element;
+
+element* elements;
+
 int main(void) {
   printf("hello world\n");
   return 0;
