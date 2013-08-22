@@ -126,3 +126,93 @@ truly interesting methods must be implemented manually.
   file. This may be used as a default implementation, which may be defined in
   source by using the protocol name in place of an element name, though the
   usefulness of such a default implementation is questionable.
+
+File Format
+-----------
+Astrocol takes a YAML document as input. The top-level element is a mapping
+whose elements must come in a specific order. Each element defines a section;
+the sections, in order, are:
+
+- configuration (optional)
+- definitions (optional)
+- prologue (optional)
+- protocol
+- element
+- epilogue (optional)
+
+Note that there may be any number of "element" sections; each element section
+is identified by the name of the element it defines.
+
+### Configuration section
+The configuration section is a mapping underneath a key named
+"configuration". Astrocol tries to have reasonable defaults for all
+configuration options, but they may be overridden here.
+
+- `protocol_name` --- The name of the protocol struct (ie, a C type). By
+  default, this is the base name of the input file.
+
+- `header` --- The name of the file to which to write a C header for use by
+  both clients and custom implementations. By default, it is the name of the
+  input file with the extension replaced with "h".
+
+- `output` --- The name of the file to which to write the auto-generated C
+  source for the protocol. By default, it is the name of the input file with
+  the extension replaced with "c".
+
+### Definitions section
+The contents of the definitions section, identified by the key "definitions",
+must be a string value. This string is inserted at the top of the generated
+header file (which is implicitly included by the implementation output), and so
+allows to make definitions common to both external and internal code.
+
+### Prologue section
+The contents of the prologue section, identified by the key "prologue", must be
+a string value. It is inserted at the top of the implementation output file,
+immediately after the implicit prologue of that file, but before any actual
+auto-generated code. The prologue will effectively follow the definitions
+section.
+
+### Protocol section
+The protocol section, identified by the key "protocol", is a mapping which
+defines the methods the protocol specifies.
+
+Each method is keyed on its name, and contains another mapping. Each element of
+the contained mapping is one of the following:
+
+- Key `return` --- Indicates the return type of the method. A method with no
+  specified return type returns void. The return type must be a "simple" C
+  type; that is, given a type `X`, the statement `X x;` must declare `x` to be
+  a variable of type `X`. An example of a type that fails this requirement is a
+  literal function pointer (such as `void (*)(int)`); use typedefs in the
+  definitions section to work around this limitation.
+
+- Key `default` --- Specifies the default automatic implementation type. If not
+  given, "undefined" is implied.
+
+- Anything else --- Defines an argument whose name is the key of the element
+  and whose type is the value. The same "simple type" restriction as for the
+  `return` key also applies to this type. Arguments are added to the protocol
+  in the order they are specified.
+
+### Element sections
+An element section is identified simply by a key whose value is the name of the
+element (thus one cannot name an element "epilogue"). An element may contain
+any number of the subsections defined below; each is identified by a key named
+after the subsection type.
+
+#### Subsection `fields`
+Contains a mapping. Each element is treated much the same as an argument
+declaration from the protocol section, except that it is appended to the fields
+of the element. Elements are layed out in the structure in the precise order in
+which they were defined.
+
+#### Subsection `methods`
+Contains a mapping. Each key names a method of the protocol; each value
+indicates the implementation type to generate. Later pairs override the effects
+of earlier ones, which is mainly useful for inheritance.
+
+### Epilogue section
+The contents of the epilogue section, identified by the key "epilogue", must be
+a string value. This string is inserted at the bottom of the output
+implementation file, after all auto-generated code.
+
