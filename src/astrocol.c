@@ -48,7 +48,6 @@ typedef struct field_s {
 
 typedef enum {
   mit_recursive,
-  mit_recursive_fold,
   mit_visit_parent,
   mit_returns_0,
   mit_returns_1,
@@ -60,7 +59,6 @@ typedef enum {
 
 typedef struct {
   method_impl_type type;
-  const char* parm;
 } method_impl;
 
 typedef struct method_s {

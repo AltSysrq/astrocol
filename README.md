@@ -101,15 +101,6 @@ truly interesting methods must be implemented manually.
   discarded. The generated implementation does not explicitly return, so this
   is only meaningful on void methods.
 
-- `recursive_fold` --- Defined with one parameter, which is a base name for a
-  pair of functions. The implementation allocates a local instance ("the
-  accumulator") of the return value, then calls a function named `BASE_init`
-  (where `BASE` is the base name parameter) with a pointer to that value. It
-  then recurses to all children as per `recursive`, except that the return
-  values are passed to the second argument of `BASE_fold`, with a pointer to
-  the accumulator as the first argument. The final value of the accumulator is
-  returned.
-
 - `visit_parent` --- The method being invoked is called on the parent instance
   with the same arguments. If the method is non-void, the parent's return value
   is also the generated implementation's return value.
