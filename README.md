@@ -200,6 +200,12 @@ element (thus one cannot name an element "epilogue"). An element may contain
 any number of the subsections defined below; each is identified by a key named
 after the subsection type.
 
+#### Subsection `extends`
+Contains a list. Lists names of zero or more other elements defined earlier in
+the file. This element will start off as the concatenation of those elements,
+rather than empty. The `extends` subsection *must* precede the `fields` and
+`methods` subsections.
+
 #### Subsection `fields`
 Contains a mapping. Each element is treated much the same as an argument
 declaration from the protocol section, except that it is appended to the fields
