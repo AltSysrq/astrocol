@@ -118,6 +118,18 @@ typedef struct method_s {
 
 method* methods;
 
+static unsigned count_methods(void) {
+  unsigned cnt = 0;
+  method* meth = methods;
+
+  while (meth) {
+    ++cnt;
+    meth = meth->next;
+  }
+
+  return cnt;
+}
+
 typedef struct element_s {
   const char* name;
   field* members;
@@ -442,6 +454,110 @@ static void read_input_file(yaml_parser_t* parser) {
   }
 
   end_document(parser, &evt);
+}
+
+static void read_element_decl(yaml_parser_t* parser, element* elt,
+                              yaml_event_t* key);
+static void read_element(yaml_parser_t* parser, yaml_event_t* key) {
+  const char* name = (const char*)key->data.scalar.value;
+  element* elt;
+  char message[64];
+  yaml_event_t evt;
+
+  /* Ensure not already defined */
+  for (elt = elements; elt; elt = elt->next) {
+    if (0 == strcmp(name, elt->name)) {
+      snprintf(message, sizeof(message),
+               "Element %s already defined", name);
+      format_error(message, key);
+    }
+  }
+
+  if (0 == strcmp(protocol_name, name)) {
+    format_error("Element name may not equal protocol name", key);
+  }
+
+  /* OK, create */
+  elt = xmalloc(sizeof(element));
+  memset(elt, 0, sizeof(element));
+  elt->name = name = strdup(name);
+  elt->next = elements;
+  elements = elt;
+
+  FORYMAP(parser, evt) {
+    read_element_decl(parser, elt, &evt);
+  }
+}
+
+static void extend_element(element*, yaml_event_t*);
+
+static void read_element_extends(yaml_parser_t* parser, element* elt,
+                                 yaml_event_t* key) {
+  yaml_event_t evt;
+
+  if (elt->members || elt->implementations) {
+    format_error("`extends` subsection must precede `fields` and `methods`", key);
+  }
+
+  xyp_parse(&evt, parser);
+  EXPECT(evt, YAML_SEQUENCE_START_EVENT);
+  yaml_event_delete(&evt);
+
+  for (xyp_parse(&evt, parser);
+       evt.type != YAML_SEQUENCE_END_EVENT;
+       yaml_event_delete(&evt), xyp_parse(&evt, parser)) {
+    EXPECT(evt, YAML_SCALAR_EVENT);
+    extend_element(elt, &evt);
+  }
+
+  yaml_event_delete(&evt);
+}
+
+static field* concatenate_fields(field* head, field* tail) {
+  field* this;
+  if (!head) return tail;
+
+  this = xmalloc(sizeof(field));
+  memcpy(head, this, sizeof(field));
+  this->next = concatenate_fields(head->next, tail);
+  return this;
+}
+
+static void extend_element(element* this, yaml_event_t* key) {
+  element* that;
+  const char* extname = (const char*)key->data.scalar.value;
+  char message[64];
+  field* padding;
+  unsigned i, num_methods = count_methods();
+
+  if (0 == strcmp(extname, this->name)) {
+    format_error("Element may not extend itself", key);
+  }
+
+  for (that = elements; that; that = that->next) {
+    if (0 == strcmp(extname, that->name)) {
+      this->members = concatenate_fields(that->members, this->members);
+      /* Add padding to long alignment to ensure binary compatibility */
+      padding = xmalloc(sizeof(field));
+      padding->type = "long";
+      padding->name = ":0";
+      padding->next = this->members;
+      this->members = padding;
+
+      /* Replace methods in this with non-default implementations from that. */
+      for (i = 0; i < num_methods; ++i)
+        if (protocol_name != that->implementations[i].implemented_by)
+          memcpy(this->implementations + i,
+                 that->implementations + i,
+                 sizeof(method_impl));
+
+      return;
+    }
+  }
+
+  snprintf(message, sizeof(message),
+           "No such element: %s", extname);
+  format_error(message, key);
 }
 
 int main(void) {
