@@ -224,6 +224,7 @@ static void read_one_configuration_value(yaml_parser_t* parser,
   for (i = 0; config_keys[i].name; ++i) {
     if (0 == strcmp(value, config_keys[i].name)) {
       (*config_keys[i].fun)(parser);
+      return;
     }
   }
 
@@ -397,7 +398,62 @@ static void read_method_arg(yaml_parser_t* parser,
   meth->fields = arg;
 }
 
+static const struct {
+  const char* name;
+  void (*parse)(yaml_parser_t*, yaml_event_t*);
+} parsing_stages[] = {
+  { "configuration", read_configuration },
+  { "definitions", read_definitions },
+  { "prologue", read_prologue },
+  { "protocol", read_protocol },
+  { "epilogue", read_epilogue },
+  { NULL, NULL }
+};
+
+static void read_input_file(yaml_parser_t* parser) {
+  yaml_event_t evt;
+  unsigned stage = 0;
+  char message[64];
+  const char* section_name;
+  int ok;
+
+  start_document(parser);
+
+  /* TODO: Elements */
+  for (xyp_parse(&evt, parser);
+       evt.type == YAML_SCALAR_EVENT;
+       yaml_event_delete(&evt), xyp_parse(&evt, parser)) {
+    section_name = (const char*)evt.data.scalar.value;
+    ok = 0;
+    while (!ok && parsing_stages[stage].name) {
+      if (0 == strcmp(section_name, parsing_stages[stage].name)) {
+        ok = 1;
+        (*parsing_stages[stage].parse)(parser, &evt);
+      }
+
+      ++stage;
+    }
+
+    if (!ok) {
+      snprintf(message, sizeof(message),
+               "Unknown section type: %s", section_name);
+      format_error(message, &evt);
+    }
+  }
+
+  end_document(parser, &evt);
+}
+
 int main(void) {
-  printf("hello world\n");
+  yaml_parser_t parser;
+
+  /* TODO: Command-line arguments, reasonable default config */
+  protocol_name = "foo";
+
+  yaml_parser_initialize(&parser);
+  yaml_parser_set_input_file(&parser, stdin);
+  read_input_file(&parser);
+  yaml_parser_delete(&parser);
+
   return 0;
 }
