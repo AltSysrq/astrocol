@@ -30,6 +30,7 @@ AC_SEARCH_LIBS([yaml_parser_initialize], [yaml], [],
 AC_CHECK_HEADERS([unistd.h getopt.h yaml.h],
                  [],
                  [AC_MSG_ERROR([A required header could not be found.])])
+AC_CHECK_HEADERS([sysexits.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
