@@ -300,7 +300,7 @@ static void read_protocol_method(yaml_parser_t* parser,
 
   /* OK, create */
   meth = xmalloc(sizeof(method));
-  meth->name = name;
+  meth->name = strdup(name);
   meth->return_type = "void";
   meth->default_impl.type = mit_undefined;
   meth->fields = NULL;
