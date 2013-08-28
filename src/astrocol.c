@@ -431,6 +431,7 @@ static void read_element(yaml_parser_t* parser, yaml_event_t* key) {
   element* elt;
   char message[64];
   yaml_event_t evt;
+  field* padding;
 
   /* Ensure not already defined */
   for (elt = elements; elt; elt = elt->next) {
@@ -460,6 +461,13 @@ static void read_element(yaml_parser_t* parser, yaml_event_t* key) {
   FORYMAP(parser, evt) {
     read_element_decl(parser, elt, &evt);
   }
+
+  /* Add padding to long alignment to ensure binary compatibility */
+  padding = xmalloc(sizeof(field));
+  padding->type = "long";
+  padding->name = ":0";
+  padding->next = elt->members;
+  elt->members = padding;
 }
 
 static void extend_element(element*, yaml_event_t*);
@@ -500,7 +508,6 @@ static void extend_element(element* this, yaml_event_t* key) {
   element* that;
   const char* extname = (const char*)key->data.scalar.value;
   char message[64];
-  field* padding;
   unsigned i, num_methods = count_methods();
 
   if (0 == strcmp(extname, this->name)) {
@@ -510,12 +517,6 @@ static void extend_element(element* this, yaml_event_t* key) {
   for (that = elements; that; that = that->next) {
     if (0 == strcmp(extname, that->name)) {
       this->members = concatenate_fields(that->members, this->members);
-      /* Add padding to long alignment to ensure binary compatibility */
-      padding = xmalloc(sizeof(field));
-      padding->type = "long";
-      padding->name = ":0";
-      padding->next = this->members;
-      this->members = padding;
 
       /* Replace methods in this with non-default implementations from that. */
       for (i = 0; i < num_methods; ++i)
