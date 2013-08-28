@@ -560,6 +560,88 @@ static void extend_element(element* this, yaml_event_t* key) {
   format_error(message, key);
 }
 
+static void read_element_fields(yaml_parser_t* parser,
+                                element* this,
+                                yaml_event_t* key) {
+  yaml_event_t nameevt;
+  const char* name;
+  field* f;
+  char message[64];
+
+  FORYMAP(parser, nameevt) {
+    name = (const char*)nameevt.data.scalar.value;
+    /* Ensure not already used */
+    for (f = this->members; f; f = f->next) {
+      if (0 == strcmp(name, f->name)) {
+        snprintf(message, sizeof(message),
+                 "Field %s already defined in this element", name);
+        format_error(message, &nameevt);
+      }
+    }
+
+    /* OK, create and read type */
+    f = xmalloc(sizeof(field));
+    f->name = strdup(name);
+    f->next = this->members;
+    read_string_value(&f->type, parser);
+    this->members = f;
+  }
+}
+
+static void read_element_methods(yaml_parser_t* parser,
+                                 element* this,
+                                 yaml_event_t* key) {
+  char message[64];
+  const char* name;
+  yaml_event_t nameevt;
+  unsigned i;
+  method* meth;
+
+  FORYMAP(parser, nameevt) {
+    name = (const char*)nameevt.data.scalar.value;
+    i = 0;
+    for (meth = methods; meth && strcmp(name, meth->name); meth = meth->next)
+      ++i;
+
+    if (!meth) {
+      snprintf(message, sizeof(message),
+               "Method %s not defined for protocol", name);
+      format_error(message, &nameevt);
+    }
+
+    read_method_impl(this->implementations + i, parser, this->name);
+  }
+}
+
+static const struct {
+  const char* name;
+  void (*parse)(yaml_parser_t*, element*, yaml_event_t*);
+} element_decls[] = {
+  { "extends", read_element_extends },
+  { "fields", read_element_fields },
+  { "methods", read_element_methods },
+  { NULL },
+};
+
+static void read_element_decl(yaml_parser_t* parser,
+                              element* this,
+                              yaml_event_t* key) {
+  const char* name = (const char*)key->data.scalar.value;
+  char message[64];
+  unsigned i;
+
+  for (i = 0; ; ++i) {
+    if (0 == strcmp(name, element_decls[i].name)) {
+      (*element_decls[i].parse)(parser, this, key);
+      return;
+    }
+  }
+
+  snprintf(message, sizeof(message),
+           "Unknown element subsection type: %s", name);
+  format_error(message, key);
+}
+
 int main(void) {
   yaml_parser_t parser;
 
