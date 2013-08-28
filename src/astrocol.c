@@ -152,7 +152,10 @@ static inline void* xmalloc(size_t sz) {
 static void format_error(const char* message, const yaml_event_t* evt) {
   fprintf(stderr, "%s:%d:%d: %s\n",
           input_filename,
-          (int)evt->start_mark.line,
+          /* Conventionally, line numbers are 1-based, but libyaml
+           * gives them to us 0-based.
+           */
+          (int)evt->start_mark.line + 1,
           (int)evt->start_mark.column,
           message);
   exit(EX_DATAERR);
@@ -438,6 +441,10 @@ static void read_element(yaml_parser_t* parser, yaml_event_t* key) {
   elt->next = elements;
   elements = elt;
 
+  xyp_parse(&evt, parser);
+  EXPECT(evt, YAML_MAPPING_START_EVENT);
+  yaml_event_delete(&evt);
+
   FORYMAP(parser, evt) {
     read_element_decl(parser, elt, &evt);
   }
@@ -522,6 +529,10 @@ static void read_element_fields(yaml_parser_t* parser,
   field* f;
   char message[64];
 
+  xyp_parse(&nameevt, parser);
+  EXPECT(nameevt, YAML_MAPPING_START_EVENT);
+  yaml_event_delete(&nameevt);
+
   FORYMAP(parser, nameevt) {
     name = (const char*)nameevt.data.scalar.value;
     /* Ensure not already used */
@@ -550,6 +561,10 @@ static void read_element_methods(yaml_parser_t* parser,
   yaml_event_t nameevt;
   unsigned i;
   method* meth;
+
+  xyp_parse(&nameevt, parser);
+  EXPECT(nameevt, YAML_MAPPING_START_EVENT);
+  yaml_event_delete(&nameevt);
 
   FORYMAP(parser, nameevt) {
     name = (const char*)nameevt.data.scalar.value;
