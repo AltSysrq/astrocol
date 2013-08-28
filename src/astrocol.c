@@ -413,6 +413,17 @@ static void read_method_arg(yaml_parser_t* parser,
   meth->fields = arg;
 }
 
+static method_impl* get_default_implementations(void) {
+  unsigned num_methods = count_methods(), i;
+  method_impl* impls = xmalloc(num_methods * sizeof(method_impl));
+  method* meth;
+
+  for (meth = methods; meth; meth = meth->next)
+    memcpy(impls + i++, &meth->default_impl, sizeof(method_impl));
+
+  return impls;
+}
+
 static void read_element_decl(yaml_parser_t* parser, element* elt,
                               yaml_event_t* key);
 static void read_element(yaml_parser_t* parser, yaml_event_t* key) {
@@ -439,6 +450,7 @@ static void read_element(yaml_parser_t* parser, yaml_event_t* key) {
   memset(elt, 0, sizeof(element));
   elt->name = name = strdup(name);
   elt->next = elements;
+  elt->implementations = get_default_implementations();
   elements = elt;
 
   xyp_parse(&evt, parser);
@@ -456,8 +468,8 @@ static void read_element_extends(yaml_parser_t* parser, element* elt,
                                  yaml_event_t* key) {
   yaml_event_t evt;
 
-  if (elt->members || elt->implementations) {
-    format_error("`extends` subsection must precede `fields` and `methods`", key);
+  if (elt->members) {
+    format_error("`extends` subsection must precede `fields`", key);
   }
 
   xyp_parse(&evt, parser);
