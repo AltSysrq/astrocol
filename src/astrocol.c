@@ -410,52 +410,6 @@ static void read_method_arg(yaml_parser_t* parser,
   meth->fields = arg;
 }
 
-static const struct {
-  const char* name;
-  void (*parse)(yaml_parser_t*, yaml_event_t*);
-} parsing_stages[] = {
-  { "configuration", read_configuration },
-  { "definitions", read_definitions },
-  { "prologue", read_prologue },
-  { "protocol", read_protocol },
-  { "epilogue", read_epilogue },
-  { NULL, NULL }
-};
-
-static void read_input_file(yaml_parser_t* parser) {
-  yaml_event_t evt;
-  unsigned stage = 0;
-  char message[64];
-  const char* section_name;
-  int ok;
-
-  start_document(parser);
-
-  /* TODO: Elements */
-  for (xyp_parse(&evt, parser);
-       evt.type == YAML_SCALAR_EVENT;
-       yaml_event_delete(&evt), xyp_parse(&evt, parser)) {
-    section_name = (const char*)evt.data.scalar.value;
-    ok = 0;
-    while (!ok && parsing_stages[stage].name) {
-      if (0 == strcmp(section_name, parsing_stages[stage].name)) {
-        ok = 1;
-        (*parsing_stages[stage].parse)(parser, &evt);
-      }
-
-      ++stage;
-    }
-
-    if (!ok) {
-      snprintf(message, sizeof(message),
-               "Unknown section type: %s", section_name);
-      format_error(message, &evt);
-    }
-  }
-
-  end_document(parser, &evt);
-}
-
 static void read_element_decl(yaml_parser_t* parser, element* elt,
                               yaml_event_t* key);
 static void read_element(yaml_parser_t* parser, yaml_event_t* key) {
@@ -640,6 +594,64 @@ static void read_element_decl(yaml_parser_t* parser,
   snprintf(message, sizeof(message),
            "Unknown element subsection type: %s", name);
   format_error(message, key);
+}
+
+static const struct {
+  const char* name;
+  void (*parse)(yaml_parser_t*, yaml_event_t*);
+} parsing_stages[] = {
+  { "configuration", read_configuration },
+  { "definitions", read_definitions },
+  { "prologue", read_prologue },
+  { "protocol", read_protocol },
+  { "~epilogue", read_element },
+  { "epilogue", read_epilogue },
+  { NULL, NULL }
+};
+
+static int matches_section(unsigned* increment,
+                           const char* target, const char* key) {
+  if ('~' == target[0]) {
+    *increment = 0;
+    return !!strcmp(target + 1, key);
+  } else {
+    *increment = 1;
+    return !strcmp(target, key);
+  }
+}
+
+static void read_input_file(yaml_parser_t* parser) {
+  yaml_event_t evt;
+  unsigned stage = 0, incr;
+  char message[64];
+  const char* section_name;
+  int ok;
+
+  start_document(parser);
+
+  for (xyp_parse(&evt, parser);
+       evt.type == YAML_SCALAR_EVENT;
+       yaml_event_delete(&evt), xyp_parse(&evt, parser)) {
+    section_name = (const char*)evt.data.scalar.value;
+    ok = 0;
+    while (!ok && parsing_stages[stage].name) {
+      if (matches_section(&incr, parsing_stages[stage].name, section_name)) {
+        (*parsing_stages[stage].parse)(parser, &evt);
+        ok = 1;
+        stage += incr;
+      } else {
+        ++stage;
+      }
+    }
+
+    if (!ok) {
+      snprintf(message, sizeof(message),
+               "Unknown section type: %s", section_name);
+      format_error(message, &evt);
+    }
+  }
+
+  end_document(parser, &evt);
 }
 
 int main(void) {
