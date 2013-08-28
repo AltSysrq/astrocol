@@ -414,7 +414,7 @@ static void read_method_arg(yaml_parser_t* parser,
 }
 
 static method_impl* get_default_implementations(void) {
-  unsigned num_methods = count_methods(), i;
+  unsigned num_methods = count_methods(), i = 0;
   method_impl* impls = xmalloc(num_methods * sizeof(method_impl));
   method* meth;
 
