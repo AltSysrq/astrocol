@@ -27,29 +27,21 @@ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
  */
 
-#include "common.h"
+#ifndef COMMON_H_
+#define COMMON_N_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-#include <getopt.h>
+#if HAVE_SYSEXITS_H
+#include <sysexits.h>
+#else
+#define EX_USAGE 64
+#define EX_DATAERR 65
+#define EX_NOINPUT 66
+#define EX_OSERR 71
+#define EX_IOERR 74
+#endif
 
-#include <yaml.h>
-
-#include "reader.h"
-#include "data.h"
-int main(void) {
-  yaml_parser_t parser;
-
-  /* TODO: Command-line arguments, reasonable default config */
-  protocol_name = "foo";
-
-  yaml_parser_initialize(&parser);
-  yaml_parser_set_input_file(&parser, stdin);
-  read_input_file(&parser);
-  yaml_parser_delete(&parser);
-
-  return 0;
-}
+#endif /* COMMON_N_ */

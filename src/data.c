@@ -29,27 +29,28 @@ SUCH DAMAGE.
 
 #include "common.h"
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <errno.h>
+#include <stdio.h>
 
-#include <getopt.h>
-
-#include <yaml.h>
-
-#include "reader.h"
 #include "data.h"
-int main(void) {
-  yaml_parser_t parser;
 
-  /* TODO: Command-line arguments, reasonable default config */
-  protocol_name = "foo";
+const char* input_filename;
+const char* protocol_header_filename;
+const char* protocol_impl_filename;
+const char* protocol_name;
+const char* prologue = "";
+const char* definitions = "";
+const char* epilogue = "";
 
-  yaml_parser_initialize(&parser);
-  yaml_parser_set_input_file(&parser, stdin);
-  read_input_file(&parser);
-  yaml_parser_delete(&parser);
+method* methods;
+element* elements;
 
-  return 0;
+void* xmalloc(size_t sz) {
+  void* ret = malloc(sz);
+  if (!ret) {
+    fprintf(stderr, "Memory exhausted");
+    abort();
+  }
+
+  return ret;
 }

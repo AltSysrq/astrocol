@@ -27,29 +27,70 @@ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
  */
 
-#include "common.h"
+#ifndef DATA_H_
+#define DATA_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
+extern const char* input_filename;
+extern const char* protocol_header_filename;
+extern const char* protocol_impl_filename;
+extern const char* protocol_name;
+extern const char* prologue;
+extern const char* definitions;
+extern const char* epilogue;
 
-#include <getopt.h>
+typedef struct field_s {
+  const char* type;
+  const char* name;
+  struct field_s* next;
+} field;
 
-#include <yaml.h>
+typedef enum {
+  mit_recursive = 0,
+  mit_visit_parent,
+  mit_returns_0,
+  mit_returns_1,
+  mit_returns_this,
+  mit_does_nothing,
+  mit_undefined,
+  mit_custom
+} method_impl_type;
 
-#include "reader.h"
-#include "data.h"
-int main(void) {
-  yaml_parser_t parser;
+typedef struct {
+  method_impl_type type;
+  const char* implemented_by;
+} method_impl;
 
-  /* TODO: Command-line arguments, reasonable default config */
-  protocol_name = "foo";
+typedef struct method_s {
+  const char* name;
+  const char* return_type;
+  method_impl default_impl;
+  field* fields;
+  struct method_s* next;
+} method;
 
-  yaml_parser_initialize(&parser);
-  yaml_parser_set_input_file(&parser, stdin);
-  read_input_file(&parser);
-  yaml_parser_delete(&parser);
+extern method* methods;
 
-  return 0;
+static inline unsigned count_methods(void) {
+  unsigned cnt = 0;
+  method* meth = methods;
+
+  while (meth) {
+    ++cnt;
+    meth = meth->next;
+  }
+
+  return cnt;
 }
+
+typedef struct element_s {
+  const char* name;
+  field* members;
+  method_impl* implementations;
+  struct element_s* next;
+} element;
+
+extern element* elements;
+
+void* xmalloc(size_t);
+
+#endif /* DATA_H_ */
