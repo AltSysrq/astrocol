@@ -154,20 +154,6 @@ static void declare_protocol_vtable(FILE* out) {
   xprintf(out, "} %s_vtable;\n", protocol_name);
 }
 
-static void declare_protocol_methods(FILE* out) {
-  method* meth;
-  field* arg;
-
-  for (meth = methods; meth; meth = meth->next) {
-    xprintf(out, "%s %s(%s*", meth->return_type, meth->name, protocol_name);
-
-    for (arg = meth->fields; arg; arg = arg->next)
-      xprintf(out, ", %s", arg->type);
-
-    xprintf(out, ");\n");
-  }
-}
-
 static void write_args(FILE* out, field* arg, char implicit) {
   /* Skip alignment-only and implicit members */
   while (arg && (arg->name[0] == ':' || arg->name[0] == implicit))
@@ -179,6 +165,18 @@ static void write_args(FILE* out, field* arg, char implicit) {
   /* Recursive case: Write earlier arguments, then this one */
   write_args(out, arg->next, implicit);
   xprintf(out, ", %s %s", arg->type, arg->name);
+}
+
+static void declare_protocol_methods(FILE* out) {
+  method* meth;
+
+  for (meth = methods; meth; meth = meth->next) {
+    xprintf(out, "%s %s(%s*", meth->return_type, meth->name, protocol_name);
+
+    write_args(out, meth->fields, 0);
+
+    xprintf(out, ");\n");
+  }
 }
 
 static void declare_element_ctors(FILE* out) {
