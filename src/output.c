@@ -56,6 +56,12 @@ static void xprintf(FILE* out, const char* format, ...) {
   va_end(args);
 }
 
+static inline void on_each_elt(FILE* out, void (*f)(FILE*, element*)) {
+  element* elt;
+  for (elt = elements; elt; elt = elt->next)
+    (*f)(out, elt);
+}
+
 static void declare_globals(FILE*);
 static void declare_predefinitions(FILE*);
 static void declare_protocol_struct(FILE*);
@@ -84,13 +90,14 @@ void write_header(FILE* output) {
 }
 
 static void declare_predefinitions(FILE* out) {
+  xprintf(out, "typedef struct %s_s %s;\n",
+          protocol_name, protocol_name);
   xprintf(out,
-          "struct %s_s;\n"
           "typedef struct {\n"
-          "  struct %s_s* first;\n"
+          "  %s* first;\n"
           "  void (*oom)(void);\n"
           "} %s_context_t;\n",
-          protocol_name, protocol_name, protocol_name);
+          protocol_name, protocol_name);
 }
 
 static void declare_globals(FILE* out) {
@@ -111,7 +118,7 @@ static void declare_globals(FILE* out) {
 
 static void declare_protocol_struct(FILE* out) {
   xprintf(out,
-          "typedef struct %s_s {\n"
+          "struct %s_s {\n"
           "  /**\n"
           "   * The table of implementations for this instance.\n"
           "   * Don't use it except to test for undefined.\n"
@@ -125,33 +132,10 @@ static void declare_protocol_struct(FILE* out) {
           "  YYLTYPE where;\n"
           "  /** Used internally by astrocol. */\n"
           "  struct %s_s* astrocol_gc_next;\n"
-          "} %s;\n",
-          protocol_name,
+          "};\n",
           protocol_name,
           protocol_name,
           protocol_name);
-}
-
-static void declare_protocol_vtable(FILE* out) {
-  method* meth;
-  field* arg;
-
-  xprintf(out, "typedef struct {\n");
-  for (meth = methods; meth; meth = meth->next) {
-    xprintf(out, "%s (*%s)(",
-            meth->return_type, meth->name);
-    if (meth->fields) {
-      for (arg = meth->fields; arg; arg = arg->next)
-        xprintf(out, "%s %s%s", arg->type, arg->name,
-                arg->next? ", " : "");
-    } else {
-      xprintf(out, "void");
-    }
-
-    xprintf(out, ");\n");
-  }
-
-  xprintf(out, "} %s_vtable;\n", protocol_name);
 }
 
 static void write_args(FILE* out, field* arg, char implicit) {
@@ -165,6 +149,22 @@ static void write_args(FILE* out, field* arg, char implicit) {
   /* Recursive case: Write earlier arguments, then this one */
   write_args(out, arg->next, implicit);
   xprintf(out, ", %s %s", arg->type, arg->name);
+}
+
+static void declare_protocol_vtable(FILE* out) {
+  method* meth;
+
+  xprintf(out, "typedef struct {\n");
+  for (meth = methods; meth; meth = meth->next) {
+    xprintf(out, "%s (*%s)(%s*",
+            meth->return_type, meth->name, protocol_name);
+
+    write_args(out, meth->fields, 0);
+
+    xprintf(out, ");\n");
+  }
+
+  xprintf(out, "} %s_vtable;\n", protocol_name);
 }
 
 static void declare_protocol_methods(FILE* out) {
@@ -190,7 +190,10 @@ static void declare_element_ctors(FILE* out) {
   }
 }
 
+static void declare_element_types(FILE*);
 static void declare_method_impls(FILE*);
+static void define_element_vtables(FILE*);
+static void define_element_types(FILE*);
 void write_impl(FILE* out) {
   xprintf(out,
           "/*\n"
@@ -205,7 +208,10 @@ void write_impl(FILE* out) {
           input_filename,
           protocol_header_filename,
           prologue);
+  declare_element_types(out);
   declare_method_impls(out);
+  define_element_vtables(out);
+  define_element_types(out);
   fputs(epilogue, out);
 }
 
@@ -244,7 +250,7 @@ static void declare_element_method_impls(FILE* out, element* elt) {
     if (mit_undefined != elt->implementations[i].type &&
         !strcmp(elt->name, get_implementor_name(meth, i, elt))) {
       xprintf(out,
-              "%s %s %s_%s(%s*",
+              "%s %s %s_%s(%s_t*",
               get_implementation_linkage(i, elt),
               meth->return_type,
               elt->name,
@@ -257,8 +263,69 @@ static void declare_element_method_impls(FILE* out, element* elt) {
 }
 
 static void declare_method_impls(FILE* out) {
+  on_each_elt(out, declare_element_method_impls);
+}
+
+static void declare_element_types(FILE* out) {
   element* elt;
 
   for (elt = elements; elt; elt = elt->next)
-    declare_element_method_impls(out, elt);
+    xprintf(out,
+            "typedef struct %s_s %s_t;\n",
+            elt->name, elt->name);
+}
+
+static void define_element_vtable(FILE* out, element* elt) {
+  method* meth;
+  unsigned ix = 0;
+  method_impl impl;
+
+  xprintf(out,
+          "static const %s_vtable %s_vtable = {\n",
+          protocol_name, elt->name);
+  for (meth = methods; meth; meth = meth->next, ++ix) {
+    impl = elt->implementations[ix];
+    if (mit_undefined == impl.type) {
+      xprintf(out, "  NULL,\n");
+    } else {
+      /* Explicitly cast to suppress warnings */
+      xprintf(out,
+              "  (%s (*)(%s*",
+              meth->return_type,
+              protocol_name);
+      write_args(out, meth->fields, 0);
+      xprintf(out, ")) %s_%s,\n",
+              get_implementor_name(meth, ix, elt),
+              meth->name);
+    }
+  }
+
+  xprintf(out, "};\n");
+}
+
+static void define_element_vtables(FILE* out) {
+  on_each_elt(out, define_element_vtable);
+}
+
+static void define_element_members(FILE* out, field* head) {
+  if (!head) return;
+
+  define_element_members(out, head->next);
+
+  xprintf(out,
+          "  %s %s;\n",
+          head->type, head->name);
+}
+
+static void define_element_type(FILE* out, element* elt) {
+  xprintf(out,
+          "struct %s_s {\n"
+          "  %s astrocol_protocol;\n",
+          elt->name, protocol_name);
+  define_element_members(out, elt->members);
+  xprintf(out, "};\n");
+}
+
+static void define_element_types(FILE* out) {
+  on_each_elt(out, define_element_type);
 }
