@@ -178,7 +178,7 @@ static void write_args(FILE* out, field* arg, char implicit) {
 
   /* Recursive case: Write earlier arguments, then this one */
   write_args(out, arg->next, implicit);
-  xprintf(out, ", %s", arg->type);
+  xprintf(out, ", %s %s", arg->type, arg->name);
 }
 
 static void declare_element_ctors(FILE* out) {
