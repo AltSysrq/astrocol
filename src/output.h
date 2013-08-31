@@ -33,5 +33,6 @@ SUCH DAMAGE.
 #include <stdio.h>
 
 void write_header(FILE*);
+void write_impl(FILE*);
 
 #endif /* OUTPUT_H_ */

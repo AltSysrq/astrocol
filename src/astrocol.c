@@ -54,6 +54,8 @@ int main(void) {
   yaml_parser_delete(&parser);
 
   write_header(stdout);
+  puts("/****************************************************************/");
+  write_impl(stdout);
 
   return 0;
 }
