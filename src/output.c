@@ -140,7 +140,7 @@ static void declare_protocol_methods(FILE* out) {
 
 static void write_ctor_args(FILE* out, field* arg) {
   /* Skip alignment-only and implicit members */
-  while (arg && (arg->name[0] == ':' || arg->name[0] == '!'))
+  while (arg && (arg->name[0] == ':' || arg->name[0] == '_'))
     arg = arg->next;
 
   /* Base case: No members remain */
