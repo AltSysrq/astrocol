@@ -419,7 +419,7 @@ static field* concatenate_fields(field* head, field* tail) {
   if (!head) return tail;
 
   this = xmalloc(sizeof(field));
-  memcpy(head, this, sizeof(field));
+  memcpy(this, head, sizeof(field));
   this->next = concatenate_fields(head->next, tail);
   return this;
 }

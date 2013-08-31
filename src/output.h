@@ -27,33 +27,11 @@ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
  */
 
-#include "common.h"
+#ifndef OUTPUT_H_
+#define OUTPUT_H_
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
 
-#include <getopt.h>
+void write_header(FILE*);
 
-#include <yaml.h>
-
-#include "reader.h"
-#include "data.h"
-#include "output.h"
-
-int main(void) {
-  yaml_parser_t parser;
-
-  /* TODO: Command-line arguments, reasonable default config */
-  protocol_name = "foo";
-
-  yaml_parser_initialize(&parser);
-  yaml_parser_set_input_file(&parser, stdin);
-  read_input_file(&parser);
-  yaml_parser_delete(&parser);
-
-  write_header(stdout);
-
-  return 0;
-}
+#endif /* OUTPUT_H_ */

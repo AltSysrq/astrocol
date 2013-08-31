@@ -34,6 +34,7 @@ SUCH DAMAGE.
 #include <stdarg.h>
 
 #include "data.h"
+#include "output.h"
 
 static void xprintf(FILE* out, const char* format, ...)
 #ifdef __GNUC__
@@ -56,7 +57,9 @@ static void xprintf(FILE* out, const char* format, ...) {
 
 static void declare_protocol_struct(FILE*);
 static void declare_protocol_vtable(FILE*);
-static void write_header(FILE* output) {
+static void declare_protocol_methods(FILE*);
+static void declare_element_ctors(FILE*);
+void write_header(FILE* output) {
   xprintf(output,
           "/*\n"
           "  Auto-generated from %s by astrocol.\n"
@@ -70,6 +73,8 @@ static void write_header(FILE* output) {
 
   declare_protocol_vtable(output);
   declare_protocol_struct(output);
+  declare_protocol_methods(output);
+  declare_element_ctors(output);
 
   xprintf(output, "#endif\n");
 }
@@ -117,4 +122,42 @@ static void declare_protocol_vtable(FILE* out) {
   }
 
   xprintf(out, "} %s_vtable;\n", protocol_name);
+}
+
+static void declare_protocol_methods(FILE* out) {
+  method* meth;
+  field* arg;
+
+  for (meth = methods; meth; meth = meth->next) {
+    xprintf(out, "%s %s(%s*", meth->return_type, meth->name, protocol_name);
+
+    for (arg = meth->fields; arg; arg = arg->next)
+      xprintf(out, ", %s", arg->type);
+
+    xprintf(out, ");\n");
+  }
+}
+
+static void write_ctor_args(FILE* out, field* arg) {
+  /* Skip alignment-only and implicit members */
+  while (arg && (arg->name[0] == ':' || arg->name[0] == '!'))
+    arg = arg->next;
+
+  /* Base case: No members remain */
+  if (!arg) return;
+
+  /* Recursive case: Write earlier arguments, then this one */
+  write_ctor_args(out, arg->next);
+  xprintf(out, ", %s", arg->type);
+}
+
+static void declare_element_ctors(FILE* out) {
+  element* elt;
+
+  for (elt = elements; elt; elt = elt->next) {
+    xprintf(out, "%s* %s(YYLTYPE", protocol_name, elt->name);
+
+    write_ctor_args(out, elt->members);
+    xprintf(out, ");\n");
+  }
 }
