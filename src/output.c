@@ -132,7 +132,12 @@ static void declare_protocol_struct(FILE* out) {
           "  YYLTYPE where;\n"
           "  /** Used internally by astrocol. */\n"
           "  struct %s_s* astrocol_gc_next;\n"
+          "  /**\n"
+          "   * The unique parent of this instance, or NULL if this\n"
+          "   * is a root. */\n"
+          "  struct %s_s* astrocol_parent;\n"
           "};\n",
+          protocol_name,
           protocol_name,
           protocol_name,
           protocol_name);
