@@ -68,7 +68,10 @@ static void declare_predefinitions(FILE*);
 static void declare_protocol_struct(FILE*);
 static void declare_protocol_vtable(FILE*);
 static void declare_protocol_methods(FILE*);
+static void declare_element_types(FILE*);
 static void declare_element_ctors(FILE*);
+static void declare_protocol_custom_defaults(FILE*);
+static void declare_method_impls(FILE*);
 void write_header(FILE* output) {
   xprintf(output,
           "/*\n"
@@ -85,7 +88,10 @@ void write_header(FILE* output) {
   declare_protocol_vtable(output);
   declare_protocol_struct(output);
   declare_protocol_methods(output);
+  declare_element_types(output);
   declare_element_ctors(output);
+  declare_protocol_custom_defaults(output);
+  declare_method_impls(output);
 
   xprintf(output, "#endif\n");
 }
@@ -124,7 +130,7 @@ static void declare_protocol_struct(FILE* out) {
           "   * The table of implementations for this instance.\n"
           "   * Don't use it except to test for undefined.\n"
           "   */\n"
-          "  struct %s_vtable* vtable;\n"
+          "  %s_vtable* vtable;\n"
           "  /**\n"
           "   * The location within the input file of this instance.\n"
           "   * It is up to the implementation to track filenames if it needs\n"
@@ -197,9 +203,6 @@ static void declare_element_ctors(FILE* out) {
 }
 
 static void define_protocol_vcalls(FILE*);
-static void declare_element_types(FILE*);
-static void declare_protocol_custom_defaults(FILE*);
-static void declare_method_impls(FILE*);
 static void define_element_vtables(FILE*);
 static void define_element_types(FILE*);
 static void define_implementations(FILE*);
@@ -213,15 +216,13 @@ void write_impl(FILE* out) {
           "#ifdef HAVE_CONFIG_H\n"
           "#include <config.h>\n"
           "#endif\n"
+          "#include <string.h>\n"
           "#include \"%s\"\n"
           "%s\n",
           input_filename,
           protocol_header_filename,
           prologue);
   define_protocol_vcalls(out);
-  declare_element_types(out);
-  declare_protocol_custom_defaults(out);
-  declare_method_impls(out);
   define_element_vtables(out);
   define_element_types(out);
   define_implementations(out);
@@ -245,14 +246,6 @@ static const char* get_implementor_name(method* meth,
     return elt->name;
 }
 
-static const char* get_implementation_linkage(unsigned ix, element* elt) {
-  /* All implementations are static, other than custom, since that must be
-   * linked against code in another file.
-   */
-  return mit_custom == elt->implementations[ix].type?
-    "extern" : "static";
-}
-
 static void declare_element_method_impls(FILE* out, element* elt) {
   method* meth;
   unsigned i = 0;
@@ -264,8 +257,7 @@ static void declare_element_method_impls(FILE* out, element* elt) {
     if (mit_undefined != elt->implementations[i].type &&
         !strcmp(elt->name, get_implementor_name(meth, i, elt))) {
       xprintf(out,
-              "%s %s %s_%s(%s_t*",
-              get_implementation_linkage(i, elt),
+              "extern %s %s_%s(%s_t*",
               meth->return_type,
               elt->name,
               meth->name,
@@ -410,7 +402,7 @@ static void gen_impl_recursive_for_member(FILE* out, method* meth,
   gen_impl_recursive_for_member(out, meth, member->next);
 
   if (is_protocol_instance(member->type)) {
-    xprintf(out, "%s(%s", meth->name, member->name);
+    xprintf(out, "%s(this->%s", meth->name, member->name);
     write_callsite_args(out, meth->fields);
     xprintf(out, ");\n");
   }
@@ -469,7 +461,7 @@ static void define_implementations_for_element(FILE* out, element* elt) {
     if (gen_impl_funs[elt->implementations[ix].type] &&
         !strcmp(elt->name, get_implementor_name(meth, ix, elt))) {
       xprintf(out,
-              "static %s %s_%s(%s_t* this",
+              "%s %s_%s(%s_t* this",
               meth->return_type, elt->name, meth->name, elt->name);
       write_args(out, meth->fields, 0);
       xprintf(out, ") {\n");
@@ -493,9 +485,9 @@ static void write_element_member_initialisers(FILE* out, field* member) {
         xprintf(out,
                 "  if (%s) {\n"
                 "    assert(!%s->parent);\n"
-                "    %s->parent = this;\n"
+                "    %s->parent = (%s*)this;\n"
                 "  }\n",
-                member->name, member->name, member->name);
+                member->name, member->name, member->name, protocol_name);
       }
     }
   }
@@ -519,15 +511,15 @@ static void define_element_ctor(FILE* out, element* elt) {
   /* Add to allocation chain */
   xprintf(out,
           "  if (%s_context->last) {\n"
-          "    %s_context->last->next = this;\n"
-          "    %s_context->last = this;\n"
+          "    %s_context->last->gc_next = (%s*)this;\n"
+          "    %s_context->last = (%s*)this;\n"
           "  } else {\n"
-          "    %s_context->first = %s_context->last = this;\n"
+          "    %s_context->first = %s_context->last = (%s*)this;\n"
           "  }\n",
           protocol_name,
-          protocol_name,
-          protocol_name,
-          protocol_name, protocol_name);
+          protocol_name, protocol_name,
+          protocol_name, protocol_name,
+          protocol_name, protocol_name, protocol_name);
 
   xprintf(out, "  return (%s*)this;\n}\n", protocol_name);
 }
@@ -551,7 +543,7 @@ static void define_protocol_vcalls(FILE* out) {
     if (!is_void(meth->return_type))
       xprintf(out, "return ");
 
-    xprintf(out, "(*this->vtable.%s)(this", meth->name);
+    xprintf(out, "(*this->vtable->%s)(this", meth->name);
     write_callsite_args(out, meth->fields);
     xprintf(out, ");\n}\n");
   }
