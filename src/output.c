@@ -198,6 +198,7 @@ static void declare_element_ctors(FILE* out) {
 
 static void define_protocol_vcalls(FILE*);
 static void declare_element_types(FILE*);
+static void declare_protocol_custom_defaults(FILE*);
 static void declare_method_impls(FILE*);
 static void define_element_vtables(FILE*);
 static void define_element_types(FILE*);
@@ -219,6 +220,7 @@ void write_impl(FILE* out) {
           prologue);
   define_protocol_vcalls(out);
   declare_element_types(out);
+  declare_protocol_custom_defaults(out);
   declare_method_impls(out);
   define_element_vtables(out);
   define_element_types(out);
@@ -268,6 +270,23 @@ static void declare_element_method_impls(FILE* out, element* elt) {
               elt->name,
               meth->name,
               elt->name);
+      write_args(out, meth->fields, 0);
+      xprintf(out, ");\n");
+    }
+  }
+}
+
+static void declare_protocol_custom_defaults(FILE* out) {
+  method* meth;
+
+  for (meth = methods; meth; meth = meth->next) {
+    if (mit_custom == meth->default_impl.type) {
+      xprintf(out,
+              "extern %s %s_%s(%s*",
+              meth->return_type,
+              protocol_name,
+              meth->name,
+              protocol_name);
       write_args(out, meth->fields, 0);
       xprintf(out, ");\n");
     }
