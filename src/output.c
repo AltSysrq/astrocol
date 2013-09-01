@@ -33,6 +33,7 @@ SUCH DAMAGE.
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "data.h"
 #include "output.h"
@@ -123,7 +124,7 @@ static void declare_protocol_struct(FILE* out) {
           "   * The table of implementations for this instance.\n"
           "   * Don't use it except to test for undefined.\n"
           "   */\n"
-          "  struct %s_vtable* astrocol_vtable;\n"
+          "  struct %s_vtable* vtable;\n"
           "  /**\n"
           "   * The location within the input file of this instance.\n"
           "   * It is up to the implementation to track filenames if it needs\n"
@@ -131,11 +132,11 @@ static void declare_protocol_struct(FILE* out) {
           "   */\n"
           "  YYLTYPE where;\n"
           "  /** Used internally by astrocol. */\n"
-          "  struct %s_s* astrocol_gc_next;\n"
+          "  struct %s_s* gc_next;\n"
           "  /**\n"
           "   * The unique parent of this instance, or NULL if this\n"
           "   * is a root. */\n"
-          "  struct %s_s* astrocol_parent;\n"
+          "  struct %s_s* parent;\n"
           "};\n",
           protocol_name,
           protocol_name,
@@ -199,6 +200,7 @@ static void declare_element_types(FILE*);
 static void declare_method_impls(FILE*);
 static void define_element_vtables(FILE*);
 static void define_element_types(FILE*);
+static void define_implementations(FILE*);
 void write_impl(FILE* out) {
   xprintf(out,
           "/*\n"
@@ -217,6 +219,7 @@ void write_impl(FILE* out) {
   declare_method_impls(out);
   define_element_vtables(out);
   define_element_types(out);
+  define_implementations(out);
   fputs(epilogue, out);
 }
 
@@ -325,7 +328,7 @@ static void define_element_members(FILE* out, field* head) {
 static void define_element_type(FILE* out, element* elt) {
   xprintf(out,
           "struct %s_s {\n"
-          "  %s astrocol_protocol;\n",
+          "  %s core;\n",
           elt->name, protocol_name);
   define_element_members(out, elt->members);
   xprintf(out, "};\n");
@@ -333,4 +336,126 @@ static void define_element_type(FILE* out, element* elt) {
 
 static void define_element_types(FILE* out) {
   on_each_elt(out, define_element_type);
+}
+
+static int skip_whitespace(const char** str) {
+  while (isspace(**str))
+    ++*str;
+
+  return 1;
+}
+
+static int scan_str(const char** str, const char* target) {
+  while (*target)
+    if (**str == *target)
+      ++*str, ++target;
+    else
+      return 0;
+
+  return 1;
+}
+
+static int is_protocol_instance(const char* type) {
+  return
+    skip_whitespace(&type) &&
+    scan_str(&type, protocol_name) &&
+    skip_whitespace(&type) &&
+    scan_str(&type, "*") &&
+    skip_whitespace(&type) &&
+    !*type;
+}
+
+static int is_void(const char* type) {
+  return
+    skip_whitespace(&type) &&
+    scan_str(&type, "void") &&
+    skip_whitespace(&type) &&
+    !*type;
+}
+
+static void write_callsite_args(FILE* out, field* field) {
+  if (!field) return;
+
+  write_callsite_args(out, field->next);
+  xprintf(out, ", %s", field->name);
+}
+
+static void gen_impl_recursive_for_member(FILE* out, method* meth,
+                                          field* member) {
+  if (!member) return;
+
+  gen_impl_recursive_for_member(out, meth, member->next);
+
+  if (is_protocol_instance(member->type)) {
+    xprintf(out, "%s(%s", meth->name, member->name);
+    write_callsite_args(out, meth->fields);
+    xprintf(out, ");\n");
+  }
+}
+
+static void gen_impl_recursive(FILE* out, method* meth, element* elt) {
+  gen_impl_recursive_for_member(out, meth, elt->members);
+}
+
+static void gen_impl_visit_parent(FILE* out, method* meth, element* elt) {
+  xprintf(out, "if (this->core.parent) ");
+
+  if (!is_void(meth->return_type))
+    xprintf(out, "return ");
+
+  xprintf(out, "%s(this->core.parent", meth->name);
+  write_callsite_args(out, meth->fields);
+  xprintf(out, ");\n");
+
+  if (!is_void(meth->return_type))
+    /* Need to return *something*, zero is probably best */
+    xprintf(out, "else return (%s)0;\n", meth->return_type);
+}
+
+static void gen_impl_returns_0(FILE* out, method* meth, element* elt) {
+  xprintf(out, "return (%s)0;\n", meth->return_type);
+}
+
+static void gen_impl_returns_1(FILE* out, method* meth, element* elt) {
+  xprintf(out, "return (%s)1;\n", meth->return_type);
+}
+
+static void gen_impl_returns_this(FILE* out, method* meth, element* elt) {
+  xprintf(out, "return (%s)this;\n", meth->return_type);
+}
+
+static void gen_impl_does_nothing(FILE* out, method* meth, element* elt) {
+}
+
+static void (*const gen_impl_funs[])(FILE*, method*, element*) = {
+  gen_impl_recursive,
+  gen_impl_visit_parent,
+  gen_impl_returns_0,
+  gen_impl_returns_1,
+  gen_impl_returns_this,
+  gen_impl_does_nothing,
+  NULL,
+  NULL,
+};
+
+static void define_implementations_for_element(FILE* out, element* elt) {
+  method* meth;
+  unsigned ix = 0;
+
+  for (meth = methods; meth; meth = meth->next, ++ix) {
+    if (gen_impl_funs[elt->implementations[ix].type] &&
+        !strcmp(elt->name, get_implementor_name(meth, ix, elt))) {
+      xprintf(out,
+              "static %s %s_%s(%s_t* this",
+              meth->return_type, elt->name, meth->name, elt->name);
+      write_args(out, meth->fields, 0);
+      xprintf(out, ") {\n");
+      (*gen_impl_funs[elt->implementations[ix].type])(out, meth, elt);
+      xprintf(out, "}\n");
+    }
+  }
+}
+
+static void define_implementations(FILE* out) {
+  on_each_elt(out, define_implementations_for_element);
 }
