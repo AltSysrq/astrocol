@@ -66,6 +66,7 @@ typedef struct method_s {
   method_impl default_impl;
   field* fields;
   struct method_s* next;
+  int is_implicit;
 } method;
 
 extern method* methods;

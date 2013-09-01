@@ -240,6 +240,7 @@ static void read_protocol_method(yaml_parser_t* parser,
   meth->default_impl.type = mit_undefined;
   meth->fields = NULL;
   meth->next = methods;
+  meth->is_implicit = 0;
   methods = meth;
 
   /* Read method information */

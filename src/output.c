@@ -133,6 +133,7 @@ static void declare_protocol_struct(FILE* out) {
           "  YYLTYPE where;\n"
           "  /** Used internally by astrocol. */\n"
           "  struct %s_s* gc_next;\n"
+          "  void (*dtor)(void*);\n"
           "  /**\n"
           "   * The unique parent of this instance, or NULL if this\n"
           "   * is a root. */\n"
@@ -177,10 +178,9 @@ static void declare_protocol_methods(FILE* out) {
   method* meth;
 
   for (meth = methods; meth; meth = meth->next) {
+    if (meth->is_implicit) continue;
     xprintf(out, "%s %s(%s*", meth->return_type, meth->name, protocol_name);
-
     write_args(out, meth->fields, 0);
-
     xprintf(out, ");\n");
   }
 }
