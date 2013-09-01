@@ -196,6 +196,7 @@ static void declare_element_ctors(FILE* out) {
   }
 }
 
+static void define_protocol_vcalls(FILE*);
 static void declare_element_types(FILE*);
 static void declare_method_impls(FILE*);
 static void define_element_vtables(FILE*);
@@ -216,6 +217,7 @@ void write_impl(FILE* out) {
           input_filename,
           protocol_header_filename,
           prologue);
+  define_protocol_vcalls(out);
   declare_element_types(out);
   declare_method_impls(out);
   define_element_vtables(out);
@@ -513,4 +515,25 @@ static void define_element_ctor(FILE* out, element* elt) {
 
 static void define_element_ctors(FILE* out) {
   on_each_elt(out, define_element_ctor);
+}
+
+static void define_protocol_vcalls(FILE* out) {
+  method* meth;
+
+  for (meth = methods; meth; meth = meth->next) {
+    if (meth->is_implicit)
+      xprintf(out, "static ");
+
+    xprintf(out, "%s %s(%s* this",
+            meth->return_type, meth->name, protocol_name);
+    write_args(out, meth->fields, 0);
+    xprintf(out, ") {\n  ");
+
+    if (!is_void(meth->return_type))
+      xprintf(out, "return ");
+
+    xprintf(out, "(*this->vtable.%s)(this", meth->name);
+    write_callsite_args(out, meth->fields);
+    xprintf(out, ");\n}\n");
+  }
 }
