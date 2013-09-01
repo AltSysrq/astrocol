@@ -95,7 +95,7 @@ static void declare_predefinitions(FILE* out) {
           protocol_name, protocol_name);
   xprintf(out,
           "typedef struct {\n"
-          "  %s* first;\n"
+          "  %s* first, * last;\n"
           "  void (*oom)(void);\n"
           "} %s_context_t;\n",
           protocol_name, protocol_name);
@@ -201,6 +201,7 @@ static void declare_method_impls(FILE*);
 static void define_element_vtables(FILE*);
 static void define_element_types(FILE*);
 static void define_implementations(FILE*);
+static void define_element_ctors(FILE*);
 void write_impl(FILE* out) {
   xprintf(out,
           "/*\n"
@@ -220,6 +221,7 @@ void write_impl(FILE* out) {
   define_element_vtables(out);
   define_element_types(out);
   define_implementations(out);
+  define_element_ctors(out);
   fputs(epilogue, out);
 }
 
@@ -458,4 +460,57 @@ static void define_implementations_for_element(FILE* out, element* elt) {
 
 static void define_implementations(FILE* out) {
   on_each_elt(out, define_implementations_for_element);
+}
+
+static void write_element_member_initialisers(FILE* out, field* member) {
+  for (; member; member = member->next) {
+    if (':' != member->name[0] && '_' != member->name[0]) {
+      xprintf(out, "  this->%s = %s;\n", member->name, member->name);
+      /* If the member is a non-NULL protocol instance, this is now its
+       * parent. */
+      if (is_protocol_instance(member->type)) {
+        xprintf(out,
+                "  if (%s) {\n"
+                "    assert(!%s->parent);\n"
+                "    %s->parent = this;\n"
+                "  }\n",
+                member->name, member->name, member->name);
+      }
+    }
+  }
+}
+
+static void define_element_ctor(FILE* out, element* elt) {
+  xprintf(out, "%s* %s(YYLTYPE where", protocol_name, elt->name);
+  write_args(out, elt->members, '_');
+  xprintf(out, ") {\n");
+
+  xprintf(out, "  %s_t* this = asmalloc(sizeof(%s_t));\n",
+          elt->name, elt->name);
+  xprintf(out,
+          "  memset(this, 0, sizeof(*this));\n"
+          "  this->core.vtable = &%s_vtable;\n"
+          "  this->core.where = where;\n",
+          elt->name);
+
+  write_element_member_initialisers(out, elt->members);
+
+  /* Add to allocation chain */
+  xprintf(out,
+          "  if (%s_context->last) {\n"
+          "    %s_context->last->next = this;\n"
+          "    %s_context->last = this;\n"
+          "  } else {\n"
+          "    %s_context->first = %s_context->last = this;\n"
+          "  }\n",
+          protocol_name,
+          protocol_name,
+          protocol_name,
+          protocol_name, protocol_name);
+
+  xprintf(out, "  return (%s*)this;\n}\n", protocol_name);
+}
+
+static void define_element_ctors(FILE* out) {
+  on_each_elt(out, define_element_ctor);
 }
