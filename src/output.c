@@ -207,6 +207,7 @@ static void define_element_vtables(FILE*);
 static void define_element_types(FILE*);
 static void define_implementations(FILE*);
 static void define_element_ctors(FILE*);
+static void define_protocol_context(FILE*);
 void write_impl(FILE* out) {
   xprintf(out,
           "/*\n"
@@ -218,6 +219,7 @@ void write_impl(FILE* out) {
           "#endif\n"
           "#include <string.h>\n"
           "#include <stdlib.h>\n"
+          "#include <stdio.h>\n"
           "#include <assert.h>\n"
           "#include \"%s\"\n"
           "%s\n",
@@ -237,6 +239,7 @@ void write_impl(FILE* out) {
   define_element_types(out);
   define_implementations(out);
   define_element_ctors(out);
+  define_protocol_context(out);
   fputs(epilogue, out);
 }
 
@@ -557,4 +560,43 @@ static void define_protocol_vcalls(FILE* out) {
     write_callsite_args(out, meth->fields);
     xprintf(out, ");\n}\n");
   }
+}
+
+static void define_protocol_context(FILE* out) {
+  xprintf(out,
+          "static void astrocol_default_oom(void) {\n"
+          "  fprintf(stderr, \"Astrocol: Memory exhausted.\");\n"
+          "}\n");
+
+  xprintf(out,
+          "%s_CONTEXT_T* %s_context;\n",
+          protocol_name, protocol_name);
+  xprintf(out,
+          "%s_CONTEXT_T* %s_create_context(void) {\n"
+          "  %s_context_t* context = astrocol_malloc(sizeof(%s_CONTEXT_T));\n"
+          "  if (!context) return NULL;\n"
+          "  memset(context, 0, sizeof(%s_CONTEXT_T));\n"
+          "  context->oom = astrocol_default_oom;\n"
+          "  return (%s_CONTEXT_T*)context;\n"
+          "}\n",
+          protocol_name, protocol_name,
+          protocol_name, protocol_name,
+
+          protocol_name,
+
+          protocol_name);
+
+  xprintf(out,
+          "void %s_destroy_context(%s_CONTEXT_T* context_) {\n"
+          "  %s_context_t* context = (%s_context_t*)context_;\n"
+          "  %s* item, * next;\n"
+          "  for (item = context->first; item; item = next) {\n"
+          /* TODO: Call destructors etc */
+          "    next = item->gc_next;\n"
+          "    free(item);\n"
+          "  }\n"
+          "}\n",
+          protocol_name, protocol_name,
+          protocol_name, protocol_name,
+          protocol_name);
 }
