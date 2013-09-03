@@ -222,15 +222,17 @@ void write_impl(FILE* out) {
           "#include <stdio.h>\n"
           "#include <assert.h>\n"
           "#include \"%s\"\n"
-          "%s\n",
+          "%s\n"
+          "#define %s_CONTEXT ((%s_context_t*)%s_context)\n",
           input_filename,
           protocol_header_filename,
-          prologue);
+          prologue,
+          protocol_name, protocol_name, protocol_name);
   xprintf(out,
           "static void* astrocol_malloc(size_t sz) {\n"
           "  void* ret = malloc(sz);\n"
           "  if (ret) return ret;\n"
-          "  (*%s_context->oom)();\n"
+          "  (*%s_CONTEXT->oom)();\n"
           "  abort();\n"
           "}\n",
           protocol_name);
@@ -523,11 +525,11 @@ static void define_element_ctor(FILE* out, element* elt) {
 
   /* Add to allocation chain */
   xprintf(out,
-          "  if (%s_context->last) {\n"
-          "    %s_context->last->gc_next = (%s*)this;\n"
-          "    %s_context->last = (%s*)this;\n"
+          "  if (%s_CONTEXT->last) {\n"
+          "    %s_CONTEXT->last->gc_next = (%s*)this;\n"
+          "    %s_CONTEXT->last = (%s*)this;\n"
           "  } else {\n"
-          "    %s_context->first = %s_context->last = (%s*)this;\n"
+          "    %s_CONTEXT->first = %s_CONTEXT->last = (%s*)this;\n"
           "  }\n",
           protocol_name,
           protocol_name, protocol_name,
