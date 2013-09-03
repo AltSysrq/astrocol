@@ -217,11 +217,21 @@ void write_impl(FILE* out) {
           "#include <config.h>\n"
           "#endif\n"
           "#include <string.h>\n"
+          "#include <stdlib.h>\n"
+          "#include <assert.h>\n"
           "#include \"%s\"\n"
           "%s\n",
           input_filename,
           protocol_header_filename,
           prologue);
+  xprintf(out,
+          "static void* astrocol_malloc(size_t sz) {\n"
+          "  void* ret = malloc(sz);\n"
+          "  if (ret) return ret;\n"
+          "  (*%s_context->oom)();\n"
+          "  abort();\n"
+          "}\n",
+          protocol_name);
   define_protocol_vcalls(out);
   define_element_vtables(out);
   define_element_types(out);
@@ -498,7 +508,7 @@ static void define_element_ctor(FILE* out, element* elt) {
   write_args(out, elt->members, '_');
   xprintf(out, ") {\n");
 
-  xprintf(out, "  %s_t* this = asmalloc(sizeof(%s_t));\n",
+  xprintf(out, "  %s_t* this = astrocol_malloc(sizeof(%s_t));\n",
           elt->name, elt->name);
   xprintf(out,
           "  memset(this, 0, sizeof(*this));\n"
