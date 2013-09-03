@@ -34,28 +34,84 @@ SUCH DAMAGE.
 #include <string.h>
 #include <errno.h>
 
-#include <getopt.h>
-
 #include <yaml.h>
 
 #include "reader.h"
 #include "data.h"
 #include "output.h"
 
-int main(void) {
-  yaml_parser_t parser;
+static void load_defaults(void);
+static void read_file(FILE*);
+static void do_to_file(void (*)(FILE*), const char*, const char*);
 
-  /* TODO: Command-line arguments, reasonable default config */
-  protocol_name = "foo";
+int main(int argc, char** argv) {
+  /* Just check for usage the simple way, since we can only be given one
+   * argument and take no command-line options.
+   */
+  if (2 != argc ||
+      !strcmp(argv[1], "-h") ||
+      !strcmp(argv[1], "-help") ||
+      !strcmp(argv[1], "--help") ||
+      !strcmp(argv[1], "-?")) {
+    printf("Usage: %s <infile>\n", argv[0]);
+    return 1 == argc? 0 : EX_USAGE;
+  }
 
-  yaml_parser_initialize(&parser);
-  yaml_parser_set_input_file(&parser, stdin);
-  read_input_file(&parser);
-  yaml_parser_delete(&parser);
+  input_filename = argv[1];
+  load_defaults();
 
-  write_header(stdout);
-  puts("/****************************************************************/");
-  write_impl(stdout);
+  do_to_file(read_file, input_filename, "r");
+
+  do_to_file(write_header, protocol_header_filename, "w");
+  do_to_file(write_impl, protocol_impl_filename, "w");
 
   return 0;
+}
+
+static void load_defaults(void) {
+  unsigned last_period = strlen(input_filename), i;
+  char* str;
+  for (i = last_period; i; --i) {
+    if (input_filename[i] == '.') {
+      last_period = i;
+      break;
+    }
+  }
+
+  protocol_name = str = xmalloc(last_period + 1);
+  memcpy(str, input_filename, last_period);
+  str[last_period] = 0;
+
+  protocol_header_filename = str = xmalloc(last_period + 3);
+  memcpy(str, input_filename, last_period);
+  str[last_period+0] = '.';
+  str[last_period+1] = 'h';
+  str[last_period+2] = 0;
+
+  protocol_impl_filename = str = xmalloc(last_period + 3);
+  memcpy(str, input_filename, last_period);
+  str[last_period+0] = '.';
+  str[last_period+1] = 'c';
+  str[last_period+2] = 0;
+}
+
+static void read_file(FILE* in) {
+  yaml_parser_t parser;
+
+  yaml_parser_initialize(&parser);
+  yaml_parser_set_input_file(&parser, in);
+  read_input_file(&parser);
+  yaml_parser_delete(&parser);
+}
+
+static void do_to_file(void (*proc)(FILE*), const char* fn, const char* mode) {
+  FILE* f = fopen(fn, mode);
+  if (!f) {
+    fprintf(stderr, "Unable to open %s: %s\n", fn, strerror(errno));
+    exit(EX_OSERR);
+  }
+
+  (*proc)(f);
+
+  fclose(f);
 }
