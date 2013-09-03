@@ -11,7 +11,6 @@ AM_MAINTAINER_MODE
 
 # Checks for programs.
 AC_PROG_CC
-AM_PROG_CC_C_O
 
 # Modifying these variables directly is typically considered a bad thing.
 # But for whatever reason, Autotools doesn't bother adding the /usr/local paths
@@ -27,7 +26,7 @@ AC_SEARCH_LIBS([yaml_parser_initialize], [yaml], [],
 [The YAML1.1 library could not be found. Make sure that libyaml[-dev] is installed.])])
 
 # Checks for header files.
-AC_CHECK_HEADERS([unistd.h getopt.h yaml.h],
+AC_CHECK_HEADERS([yaml.h],
                  [],
                  [AC_MSG_ERROR([A required header could not be found.])])
 AC_CHECK_HEADERS([sysexits.h])
@@ -37,22 +36,9 @@ AC_C_INLINE
 AC_C_CONST
 AC_TYPE_SIZE_T
 
-# Checks for library functions.
-# We never malloc() or realloc() with size zero, so we don't need these
-# checks.
-dnl AC_FUNC_MALLOC
-dnl AC_FUNC_REALLOC
-AC_FUNC_FORK
-AC_TYPE_PID_T
-# Don't check for regcomp as suggested by autoscan; if regex.h exists, it is
-# generally safe to say that the functions defined within exist as well.
-AC_CHECK_FUNCS([memmove memset strerror getopt],
+AC_CHECK_FUNCS([memmove memset strerror],
   [],
   AC_MSG_ERROR([A required function could not be found.]))
-
-AC_CHECK_FUNCS([getopt_long],
-  [AC_DEFINE([USE_GETOPT_LONG], [1], [Use getopt_long instead of getopt])],
-  [])
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
