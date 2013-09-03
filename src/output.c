@@ -130,7 +130,7 @@ static void declare_protocol_struct(FILE* out) {
           "   * The table of implementations for this instance.\n"
           "   * Don't use it except to test for undefined.\n"
           "   */\n"
-          "  %s_vtable* vtable;\n"
+          "  const %s_vtable* vtable;\n"
           "  /**\n"
           "   * The location within the input file of this instance.\n"
           "   * It is up to the implementation to track filenames if it needs\n"
