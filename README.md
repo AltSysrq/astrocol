@@ -35,8 +35,9 @@ Each method defines a default implicit implementation, which may be any
 described in the Automatic Implementations section.
 
 Astrocol reserves two special method names, "ctor" and "dtor", whose semantics
-are described in the Element Construction section. Furthermore, the method name
-"free" is forbidden.
+are described in the Element Construction section. One typically should avoid
+defining methods whose names conflict with other global symbols, such as
+"free".
 
 ### Elements
 
@@ -60,7 +61,8 @@ empty lists. While this is akin to subclassing in object systems, it is
 primarily useful for sharing method implementations rather than
 substitution. It is legal for an element to extend more than one other element,
 but the effects are undefined if more than one of the extended elements defines
-fields.
+fields and custom method implementations. A pointer to an element is always a
+valid pointer to the first element it extends.
 
 ### Element Construction
 
@@ -101,17 +103,17 @@ truly interesting methods must be implemented manually.
   discarded. The generated implementation does not explicitly return, so this
   is only meaningful on void methods.
 
-- `visit_parent` --- The method being invoked is called on the parent instance
+- `visit parent` --- The method being invoked is called on the parent instance
   with the same arguments. If the method is non-void, the parent's return value
   is also the generated implementation's return value.
 
-- `return_0` --- The generated implementation is simply `return 0;`.
+- `return 0` --- The generated implementation is simply `return 0;`.
 
-- `return_1` --- The generated implementation is simply `return 1;`.
+- `return 1` --- The generated implementation is simply `return 1;`.
 
-- `return_this` --- The generated implementation is simply `return this;`.
+- `return this` --- The generated implementation is simply `return this;`.
 
-- `does_nothing` --- The generated implementation is empty. Only appropriate
+- `does nothing` --- The generated implementation is empty. Only appropriate
   for void methods.
 
 - `undefined` --- There is no generated implementation; it is set to NULL in
@@ -210,7 +212,11 @@ rather than empty. The `extends` subsection *must* precede the `fields` and
 Contains a mapping. Each element is treated much the same as an argument
 declaration from the protocol section, except that it is appended to the fields
 of the element. Elements are layed out in the structure in the precise order in
-which they were defined.
+which they were defined. Fields whose names begin with an underscore are
+internal --- they do not get passed to the constructor function, instead being
+merely initialised to zeroes. A field is of "protocol type" if it is a pointer
+to the protocol type (ie, matching `^\s*PROT\s*\*\s*$`, where `PROT` is the
+configuation value `protocol_name`).
 
 #### Subsection `methods`
 Contains a mapping. Each key names a method of the protocol; each value
@@ -222,3 +228,98 @@ The contents of the epilogue section, identified by the key "epilogue", must be
 a string value. This string is inserted at the bottom of the output
 implementation file, after all auto-generated code.
 
+C Interface
+-----------
+
+### Types
+
+#### YYLTYPE
+The data type to be used for storing location information. This *must* be
+defined by the application, typically in the definitions section or by the
+Bison-generated header.
+
+#### PROTOCOL_CONTEXT_T
+A structure type encapsulating the data pertaining to a protocol's "context";
+"PROTOCOL" is the exact string value of the `protocol_name` configuration, so
+the real name is something like `example_CONTEXT_T`. This identifier is assumed
+o be a preprocessor definition, and will not behave correctly if it is not.
+
+This structure *must* begin with a member of type `PROTOCOL_context_t`. If user
+code does not define its own `PROTOCOL_CONTEXT_T`, it is implicitly defined to
+`PROTOCOL_context_t`.
+
+#### PROTOCOL
+Each protocol creates a typedefedd structure with the same name as the
+protocol. The majority of interactions are done through pointers to this type,
+and all elements begin with such value.
+
+The application-usable fields within this structure are as follows. All are
+read-only application code.
+- `vtable` --- Struct with function pointers for each method. User code should
+  only use this if it needs to test for the existence of a method
+  implementation.  Do not call the values directly; instead, use the global
+  functions named after those methods.
+- `where` --- The location where this instance was defined.
+- `parent` --- The logical parente of this instance. It is set when an elmeent
+  is instantiated with this instance as a value of one of its non-internal
+  protocol-type fields.
+
+#### ELEMENT_t
+Each element creates a typedefed structure whose name is the element name with
+the suffix "_t" attached. Application code providing custom method
+implementations typically is all that interacts with this directly. It begins
+with a field named "core", which is of type PROTOCOL. The rest of the fields
+are those define by the element and the elements it extends.
+
+### Context Management
+Each protocol has a "curent context", represented by the global variable
+`PROTOCOL_context`, of type `PROTOCOL_CONTEXT_T*`. Astrocol only uses context
+to encapsulate memory management, though application code may wish to store
+additional data here.
+
+A new context can be created by calling the function
+`PROTOCOL_create_context(void)`, which either returns a fresh context object or
+NULL if memory is unavailable. This does not set the current context; control
+of the current context is delegated entirely to the application.
+
+Once the current context has been set, new elements may be created by calling
+their constructor functions. Each element is considered a member of what was
+the current context when it was constructed; hierarchical relationships (ie,
+the `parent` field) do not play into memory management. This makes Astrocol
+safe to use for, eg, Bison-generated GLR parsers, which may create multiple
+versions of a parse tree while keeping only one visible in the end.
+
+When you are done with a context, it may be destroyed by passing it to
+`PROTOCOL_destroy_context()`. This call not only frees the context object, but
+also destroys all elements belonging to the context, in the order they were
+allocated. Note that the application may need to manually clean up additional
+memory to which any data it added to the context points before calling this
+function.
+
+### Protocol
+There are no functions to directly manipulate protocol objects, per se. Each
+non-implicit method has one global function of the same name and return type,
+which takes as arguments a protocol object followed by any arguments declared
+for the method. This function will automatically delegate to the real
+implementation of the method.
+
+Application code should only ever call methods via the global functinos, rather
+than dereferencing the vtable directly. Accessing the vtable to test whether a
+method is defined (but not calling it this way) is sometimes acceptable, though
+in general a correctly-designed program will never need to do this.
+
+Custom default implementations of protocol methods are expected to be named
+`PROTOCOL_METHOD`, and have the same signature as the global method functions.
+
+### Elements
+New instances of a particular element type may be constructed by calling a
+global function of the same name. This function takes as arguments a `YYLTYPE`
+indicating where the element is defined, followed by values for all
+non-internal fields. The constructor functions return a pointer to a protocol
+type rather than the element type (though they can be converted back if need
+be).
+
+Each method implementation provided by an element is defined in a fuction named
+`ELEMENT_METHOD`, whose signature is identical to the global method function,
+except that the first argument is a pointer to the element type rather than the
+protocol type.
