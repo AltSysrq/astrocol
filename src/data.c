@@ -31,6 +31,7 @@ SUCH DAMAGE.
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "data.h"
 
@@ -47,6 +48,16 @@ element* elements;
 
 void* xmalloc(size_t sz) {
   void* ret = malloc(sz);
+  if (!ret) {
+    fprintf(stderr, "Memory exhausted");
+    abort();
+  }
+
+  return ret;
+}
+
+char* xstrdup(const char* str) {
+  char* ret = strdup(str);
   if (!ret) {
     fprintf(stderr, "Memory exhausted");
     abort();

@@ -174,7 +174,7 @@ static void read_string_value(const char** dst,
   xyp_parse(&evt, parser);
   EXPECT(evt, YAML_SCALAR_EVENT);
 
-  *dst = strdup((const char*)evt.data.scalar.value);
+  *dst = xstrdup((const char*)evt.data.scalar.value);
 
   yaml_event_delete(&evt);
 }
@@ -235,7 +235,7 @@ static void read_protocol_method(yaml_parser_t* parser,
 
   /* OK, create */
   meth = xmalloc(sizeof(method));
-  meth->name = strdup(name);
+  meth->name = xstrdup(name);
   meth->return_type = "void";
   meth->default_impl.type = mit_undefined;
   meth->fields = NULL;
@@ -328,7 +328,7 @@ static void read_method_arg(yaml_parser_t* parser,
 
   /* OK, create */
   arg = xmalloc(sizeof(field));
-  arg->name = strdup(key_name);
+  arg->name = xstrdup(key_name);
   read_string_value(&arg->type, parser);
   arg->next = meth->fields;
   meth->fields = arg;
@@ -370,7 +370,7 @@ static void read_element(yaml_parser_t* parser, yaml_event_t* key) {
   /* OK, create */
   elt = xmalloc(sizeof(element));
   memset(elt, 0, sizeof(element));
-  elt->name = name = strdup(name);
+  elt->name = name = xstrdup(name);
   elt->next = elements;
   elt->implementations = get_default_implementations();
   elements = elt;
@@ -480,7 +480,7 @@ static void read_element_fields(yaml_parser_t* parser,
 
     /* OK, create and read type */
     f = xmalloc(sizeof(field));
-    f->name = strdup(name);
+    f->name = xstrdup(name);
     f->next = this->members;
     read_string_value(&f->type, parser);
     this->members = f;

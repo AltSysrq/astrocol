@@ -93,5 +93,6 @@ typedef struct element_s {
 extern element* elements;
 
 void* xmalloc(size_t);
+char* xstrdup(const char*);
 
 #endif /* DATA_H_ */
