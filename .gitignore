@@ -13,3 +13,9 @@ missing
 stamp-h1
 configure
 .deps
+m4
+*.la
+*.lo
+libtool
+ltmain.sh
+.libs

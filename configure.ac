@@ -4,6 +4,9 @@
 AC_PREREQ([2.6])
 AC_INIT([astrocol], [0.0.1], [jason@lin.gl])
 AM_INIT_AUTOMAKE
+AC_CONFIG_MACRO_DIR([m4])
+LT_PREREQ([1.5])
+LT_INIT([dlopen])
 AC_CONFIG_SRCDIR([src/astrocol.c])
 AC_CONFIG_HEADERS([config.h])
 AM_SILENT_RULES(yes)
