@@ -259,7 +259,7 @@ read-only application code.
   only use this if it needs to test for the existence of a method
   implementation.  Do not call the values directly; instead, use the global
   functions named after those methods.
-- `where` --- The location where this instance was defined.
+- `begin`, `end` --- The start and end locations where this instance was defined.
 - `parent` --- The logical parente of this instance. It is set when an elmeent
   is instantiated with this instance as a value of one of its non-internal
   protocol-type fields.
@@ -313,8 +313,8 @@ Custom default implementations of protocol methods are expected to be named
 
 ### Elements
 New instances of a particular element type may be constructed by calling a
-global function of the same name. This function takes as arguments a `YYLTYPE`
-indicating where the element is defined, followed by values for all
+global function of the same name. This function takes as arguments two
+`YYLTYPE`s indicating where the element is defined, followed by values for all
 non-internal fields. The constructor functions return a pointer to a protocol
 type rather than the element type (though they can be converted back if need
 be).
