@@ -508,7 +508,21 @@ static void write_element_member_initialisers(FILE* out, field* member) {
   }
 }
 
+static void define_element_dtor(FILE* out, element* elt) {
+  xprintf(out,
+          "static void astrocol_%s_dtor(void* vthis) {\n"
+          "  %s_t* this = vthis;\n"
+          "  /* Call user destructor if exists */\n"
+          "  if (this->core.vtable->dtor)\n"
+          "    (*this->core.vtable->dtor)((%s*)this);\n"
+          "  free(this);\n"
+          "}\n",
+          elt->name, elt->name, protocol_name);
+}
+
 static void define_element_ctor(FILE* out, element* elt) {
+  define_element_dtor(out, elt);
+
   xprintf(out, "%s* %s(YYLTYPE where", protocol_name, elt->name);
   write_args(out, elt->members, '_');
   xprintf(out, ") {\n");
@@ -518,8 +532,9 @@ static void define_element_ctor(FILE* out, element* elt) {
   xprintf(out,
           "  memset(this, 0, sizeof(*this));\n"
           "  this->core.vtable = &%s_vtable;\n"
-          "  this->core.where = where;\n",
-          elt->name);
+          "  this->core.where = where;\n"
+          "  this->core.dtor = astrocol_%s_dtor;\n",
+          elt->name, elt->name);
 
   write_element_member_initialisers(out, elt->members);
 
@@ -535,6 +550,12 @@ static void define_element_ctor(FILE* out, element* elt) {
           protocol_name, protocol_name,
           protocol_name, protocol_name,
           protocol_name, protocol_name, protocol_name);
+
+  /* Call user ctor if exists */
+  xprintf(out,
+          "  if (this->core.vtable->ctor)\n"
+          "    (*this->core.vtable->ctor)((%s*)this);\n",
+          protocol_name);
 
   xprintf(out, "  return (%s*)this;\n}\n", protocol_name);
 }
@@ -593,7 +614,7 @@ static void define_protocol_context(FILE* out) {
           "  %s_context_t* context = (%s_context_t*)context_;\n"
           "  %s* item, * next;\n"
           "  for (item = context->first; item; item = next) {\n"
-          /* TODO: Call destructors etc */
+          "    (*item->dtor)(item);\n"
           "    next = item->gc_next;\n"
           "    free(item);\n"
           "  }\n"

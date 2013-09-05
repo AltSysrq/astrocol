@@ -71,6 +71,7 @@ int main(int argc, char** argv) {
 static void load_defaults(void) {
   unsigned last_period = strlen(input_filename), i;
   char* str;
+  method* meth;
   for (i = last_period; i; --i) {
     if (input_filename[i] == '.') {
       last_period = i;
@@ -93,6 +94,24 @@ static void load_defaults(void) {
   str[last_period+0] = '.';
   str[last_period+1] = 'c';
   str[last_period+2] = 0;
+
+  meth = xmalloc(sizeof(method));
+  meth->name = "ctor";
+  meth->return_type = "void";
+  meth->default_impl.type = mit_undefined;
+  meth->fields = NULL;
+  meth->next = methods;
+  meth->is_implicit = 1;
+  methods = meth;
+
+  meth = xmalloc(sizeof(method));
+  meth->name = "dtor";
+  meth->return_type = "void";
+  meth->default_impl.type = mit_undefined;
+  meth->fields = NULL;
+  meth->next = methods;
+  meth->is_implicit = 1;
+  methods = meth;
 }
 
 static void read_file(FILE* in) {
