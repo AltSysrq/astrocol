@@ -86,9 +86,6 @@ When an element is to be destroyed, the following steps are taken:
 
 - The memory associated with the element is released.
 
-See the Memory Management subsection of the C Interface section for further
-details.
-
 ### Automatic Implementations
 
 In general, few method implementations in an AST protocol do anything
