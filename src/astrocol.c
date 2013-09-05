@@ -99,6 +99,7 @@ static void load_defaults(void) {
   meth->name = "ctor";
   meth->return_type = "void";
   meth->default_impl.type = mit_undefined;
+  meth->default_impl.implemented_by = "";
   meth->fields = NULL;
   meth->next = methods;
   meth->is_implicit = 1;
@@ -108,6 +109,7 @@ static void load_defaults(void) {
   meth->name = "dtor";
   meth->return_type = "void";
   meth->default_impl.type = mit_undefined;
+  meth->default_impl.implemented_by = "";
   meth->fields = NULL;
   meth->next = methods;
   meth->is_implicit = 1;
