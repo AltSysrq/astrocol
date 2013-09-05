@@ -533,7 +533,7 @@ static void read_element_decl(yaml_parser_t* parser,
   char message[64];
   unsigned i;
 
-  for (i = 0; ; ++i) {
+  for (i = 0; element_decls[i].name; ++i) {
     if (0 == strcmp(name, element_decls[i].name)) {
       (*element_decls[i].parse)(parser, this, key);
       return;
