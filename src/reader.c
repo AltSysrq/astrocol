@@ -259,10 +259,15 @@ static const struct {
 } method_impl_names[] = {
   { "recursive", mit_recursive },
   { "visit parent", mit_visit_parent },
+  { "visits parent", mit_visit_parent },
   { "returns 0", mit_returns_0 },
+  { "return 0", mit_returns_0 },
   { "returns 1", mit_returns_1 },
+  { "return 1", mit_returns_1 },
   { "returns this", mit_returns_this },
+  { "return this", mit_returns_this },
   { "does nothing", mit_does_nothing },
+  { "do nothing", mit_does_nothing },
   { "undefined", mit_undefined },
   { "custom", mit_custom },
   { NULL }

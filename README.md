@@ -112,8 +112,8 @@ truly interesting methods must be implemented manually.
 
 - `return this` --- The generated implementation is simply `return this;`.
 
-- `does nothing` --- The generated implementation is empty. Only appropriate
-  for void methods.
+- `do nothing` --- The generated implementation is empty. Only appropriate for
+  void methods.
 
 - `undefined` --- There is no generated implementation; it is set to NULL in
   the protocol table. Client code must be prepared for this condition and
