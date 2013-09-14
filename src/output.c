@@ -103,7 +103,7 @@ static void declare_predefinitions(FILE* out) {
           protocol_name, protocol_name);
   xprintf(out,
           "typedef struct {\n"
-          "  %s* first, * last;\n"
+          "  %s* last;\n"
           "  void (*oom)(void);\n"
           "} %s_context_t;\n",
           protocol_name, protocol_name);
@@ -537,20 +537,14 @@ static void define_memman_funs(FILE* out) {
           "  mem = astrocol_malloc(sizeof(*mem) + sz - sizeof(long));\n"
           "  memset(mem, 0, sizeof(*mem) + sz - sizeof(long));\n"
           "  mem->prot.dtor = astrocol_memory_dtor;\n"
-          "  if (%s_CONTEXT->last) {\n"
-          "    %s_CONTEXT->last->gc_next = &mem->prot;\n"
-          "    %s_CONTEXT->last = &mem->prot;\n"
-          "  } else {\n"
-          "    %s_CONTEXT->first = %s_CONTEXT->last = &mem->prot;\n"
-          "  }\n"
+          "  mem->prot.gc_next = %s_CONTEXT->last;\n"
+          "  %s_CONTEXT->last = &mem->prot;\n"
           "  return mem->data;\n"
           "}\n",
           protocol_name,
           protocol_name,
           protocol_name,
-          protocol_name,
-          protocol_name,
-          protocol_name, protocol_name);
+          protocol_name);
   xprintf(out,
           "void* %s_malloc(size_t sz) { return %s_dalloc(sz, NULL); }\n",
           protocol_name, protocol_name);
@@ -599,16 +593,10 @@ static void define_element_ctor(FILE* out, element* elt) {
 
   /* Add to allocation chain */
   xprintf(out,
-          "  if (%s_CONTEXT->last) {\n"
-          "    %s_CONTEXT->last->gc_next = (%s*)this;\n"
-          "    %s_CONTEXT->last = (%s*)this;\n"
-          "  } else {\n"
-          "    %s_CONTEXT->first = %s_CONTEXT->last = (%s*)this;\n"
-          "  }\n",
+          "  this->core.gc_next = %s_CONTEXT->last;\n"
+          "  %s_CONTEXT->last = (%s*)this;\n",
           protocol_name,
-          protocol_name, protocol_name,
-          protocol_name, protocol_name,
-          protocol_name, protocol_name, protocol_name);
+          protocol_name, protocol_name);
 
   /* Call user ctor if exists */
   xprintf(out,
@@ -672,7 +660,7 @@ static void define_protocol_context(FILE* out) {
           "void %s_destroy_context(%s_CONTEXT_T* context_) {\n"
           "  %s_context_t* context = (%s_context_t*)context_;\n"
           "  %s* item, * next;\n"
-          "  for (item = context->first; item; item = next) {\n"
+          "  for (item = context->last; item; item = next) {\n"
           "    (*item->dtor)(item);\n"
           "    next = item->gc_next;\n"
           "    free(item);\n"

@@ -288,10 +288,10 @@ versions of a parse tree while keeping only one visible in the end.
 
 When you are done with a context, it may be destroyed by passing it to
 `PROTOCOL_destroy_context()`. This call not only frees the context object, but
-also destroys all elements belonging to the context, in the order they were
-allocated. Note that the application may need to manually clean up additional
-memory to which any data it added to the context points before calling this
-function.
+also destroys all elements belonging to the context, in reverse the order they
+were allocated. Note that the application may need to manually clean up
+additional memory to which any data it added to the context points before
+calling this function.
 
 ### Protocol
 There are no functions to directly manipulate protocol objects, per se. Each
