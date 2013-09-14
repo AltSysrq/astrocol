@@ -72,6 +72,7 @@ static void declare_element_types(FILE*);
 static void declare_element_ctors(FILE*);
 static void declare_protocol_custom_defaults(FILE*);
 static void declare_method_impls(FILE*);
+static void declare_memman_funs(FILE*);
 void write_header(FILE* output) {
   xprintf(output,
           "/*\n"
@@ -92,6 +93,7 @@ void write_header(FILE* output) {
   declare_element_ctors(output);
   declare_protocol_custom_defaults(output);
   declare_method_impls(output);
+  declare_memman_funs(output);
 
   xprintf(output, "#endif\n");
 }
@@ -202,12 +204,21 @@ static void declare_element_ctors(FILE* out) {
   }
 }
 
+static void declare_memman_funs(FILE* out) {
+  xprintf(out,
+          "void* %s_dalloc(size_t, void (*)(void*));\n"
+          "void* %s_malloc(size_t);\n"
+          "char* %s_strdup(const char*);\n",
+          protocol_name, protocol_name, protocol_name);
+}
+
 static void define_protocol_vcalls(FILE*);
 static void define_element_vtables(FILE*);
 static void define_element_types(FILE*);
 static void define_implementations(FILE*);
 static void define_element_ctors(FILE*);
 static void define_protocol_context(FILE*);
+static void define_memman_funs(FILE*);
 void write_impl(FILE* out) {
   xprintf(out,
           "/*\n"
@@ -242,6 +253,7 @@ void write_impl(FILE* out) {
   define_implementations(out);
   define_element_ctors(out);
   define_protocol_context(out);
+  define_memman_funs(out);
   fputs(epilogue, out);
 }
 
@@ -506,6 +518,51 @@ static void write_element_member_initialisers(FILE* out, field* member) {
       }
     }
   }
+}
+
+static void define_memman_funs(FILE* out) {
+  xprintf(out,
+          "typedef struct {\n"
+          "  %s prot;\n"
+          "  void (*dtor)(void*);\n"
+          "  char data[sizeof(long)];\n"
+          "} astrocol_memory;\n"
+          "static void astrocol_memory_dtor(void* vthis) {\n"
+          "  astrocol_memory* this = vthis;\n"
+          "  if (this->dtor) (*this->dtor)(this->data);\n"
+          "  free(this);\n"
+          "}\n"
+          "void* %s_dalloc(size_t sz, void (*dtor)(void*)) {\n"
+          "  astrocol_memory* mem;\n"
+          "  mem = astrocol_malloc(sizeof(*mem) + sz - sizeof(long));\n"
+          "  memset(mem, 0, sizeof(*mem) + sz - sizeof(long));\n"
+          "  mem->prot.dtor = astrocol_memory_dtor;\n"
+          "  if (%s_CONTEXT->last) {\n"
+          "    %s_CONTEXT->last->gc_next = &mem->prot;\n"
+          "    %s_CONTEXT->last = &mem->prot;\n"
+          "  } else {\n"
+          "    %s_CONTEXT->first = %s_CONTEXT->last = &mem->prot;\n"
+          "  }\n"
+          "  return mem->data;\n"
+          "}\n",
+          protocol_name,
+          protocol_name,
+          protocol_name,
+          protocol_name,
+          protocol_name,
+          protocol_name, protocol_name);
+  xprintf(out,
+          "void* %s_malloc(size_t sz) { return %s_dalloc(sz, NULL); }\n",
+          protocol_name, protocol_name);
+  xprintf(out,
+          "char* %s_strdup(const char* str) {\n"
+          "  size_t n = strlen(str);\n"
+          "  char* ret = %s_malloc(n+1);\n"
+          "  memcpy(ret, str, n+1);\n"
+          "  return ret;\n"
+          "}\n",
+          protocol_name,
+          protocol_name);
 }
 
 static void define_element_dtor(FILE* out, element* elt) {

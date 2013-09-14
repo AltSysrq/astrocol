@@ -320,3 +320,21 @@ Each method implementation provided by an element is defined in a fuction named
 `ELEMENT_METHOD`, whose signature is identical to the global method function,
 except that the first argument is a pointer to the element type rather than the
 protocol type.
+
+### Memory Management
+As described earlier, all element instances allocated are bound to a specific
+protocol context, and destroyed when the associated context is destroyed.
+
+It is also possible to allocate arbitrary memory to be associated with the
+context. The functions `PROTOCOL_malloc` and `PROTOCOL_strdup` function like
+their standard C counterparts, but the memory is automatically freed when the
+context is. `PROTOCOL_dalloc` takes an additional argument, of type
+`void (*)(void*)`, which is invoked on the memory immediately before it is
+freed (ie, it specifies a destructor function).
+
+The memory allocation functions, other than `PROTOCOL_create_context`, do not
+return `NULL` if allocation fails. Instead, they invoke the out-of-memory
+handler set in the context (type `void (*)(void)`). The default OOM handler
+simply prints an error message and aborts the process. It is safe for the OOM
+handler to `longjmp()` out of the callback and into user code, where the
+protocol context in question may be freed.
