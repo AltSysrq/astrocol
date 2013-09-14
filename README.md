@@ -102,7 +102,9 @@ truly interesting methods must be implemented manually.
 
 - `visit parent` --- The method being invoked is called on the parent instance
   with the same arguments. If the method is non-void, the parent's return value
-  is also the generated implementation's return value.
+  is also the generated implementation's return value. If there is no parent,
+  the implementation either does nothing or returns 0, depending on whether the
+  return type is void.
 
 - `return 0` --- The generated implementation is simply `return 0;`.
 
