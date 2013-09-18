@@ -248,7 +248,7 @@ code does not define its own `PROTOCOL_CONTEXT_T`, it is implicitly defined to
 `PROTOCOL_context_t`.
 
 #### PROTOCOL
-Each protocol creates a typedefedd structure with the same name as the
+Each protocol creates a typedeffed structure with the same name as the
 protocol. The majority of interactions are done through pointers to this type,
 and all elements begin with such value.
 
@@ -258,7 +258,7 @@ read-only application code.
   only use this if it needs to test for the existence of a method
   implementation.  Do not call the values directly; instead, use the global
   functions named after those methods.
-- `begin`, `end` --- The start and end locations where this instance was defined.
+- `where` --- The source file location where this instance was found.
 - `parent` --- The logical parente of this instance. It is set when an elmeent
   is instantiated with this instance as a value of one of its non-internal
   protocol-type fields.
@@ -312,8 +312,8 @@ Custom default implementations of protocol methods are expected to be named
 
 ### Elements
 New instances of a particular element type may be constructed by calling a
-global function of the same name. This function takes as arguments two
-`YYLTYPE`s indicating where the element is defined, followed by values for all
+global function of the same name. This function takes as arguments an `YYLTYPE`
+indicating where the element is defined, followed by values for all
 non-internal fields. The constructor functions return a pointer to a protocol
 type rather than the element type (though they can be converted back if need
 be).

@@ -138,7 +138,7 @@ static void declare_protocol_struct(FILE* out) {
           "   * It is up to the implementation to track filenames if it needs\n"
           "   * to do so.\n"
           "   */\n"
-          "  YYLTYPE start, end;\n"
+          "  YYLTYPE where;\n"
           "  /** Used internally by astrocol. */\n"
           "  struct %s_s* gc_next;\n"
           "  void (*dtor)(void*);\n"
@@ -197,7 +197,7 @@ static void declare_element_ctors(FILE* out) {
   element* elt;
 
   for (elt = elements; elt; elt = elt->next) {
-    xprintf(out, "%s* %s(YYLTYPE, YYLTYPE", protocol_name, elt->name);
+    xprintf(out, "%s* %s(YYLTYPE", protocol_name, elt->name);
 
     write_args(out, elt->members, '_');
     xprintf(out, ");\n");
@@ -574,7 +574,7 @@ static void define_element_dtor(FILE* out, element* elt) {
 static void define_element_ctor(FILE* out, element* elt) {
   define_element_dtor(out, elt);
 
-  xprintf(out, "%s* %s(YYLTYPE astrocol_start, YYLTYPE astrocol_end",
+  xprintf(out, "%s* %s(YYLTYPE astrocol_where",
           protocol_name, elt->name);
   write_args(out, elt->members, '_');
   xprintf(out, ") {\n");
@@ -584,8 +584,7 @@ static void define_element_ctor(FILE* out, element* elt) {
   xprintf(out,
           "  memset(this, 0, sizeof(*this));\n"
           "  this->core.vtable = &%s_vtable;\n"
-          "  this->core.start = astrocol_start;\n"
-          "  this->core.end = astrocol_end;\n"
+          "  this->core.where = astrocol_where;\n"
           "  this->core.dtor = astrocol_%s_dtor;\n",
           elt->name, elt->name);
 
