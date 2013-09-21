@@ -565,7 +565,7 @@ static void define_element_dtor(FILE* out, element* elt) {
           "  %s_t* this = vthis;\n"
           "  /* Call user destructor if exists */\n"
           "  if (this->core.vtable->dtor)\n"
-          "    (*this->core.vtable->dtor)((%s*)this);\n"
+          "    dtor((%s*)this);\n"
           "  free(this);\n"
           "}\n",
           elt->name, elt->name, protocol_name);
@@ -600,7 +600,7 @@ static void define_element_ctor(FILE* out, element* elt) {
   /* Call user ctor if exists */
   xprintf(out,
           "  if (this->core.vtable->ctor)\n"
-          "    (*this->core.vtable->ctor)((%s*)this);\n",
+          "    ctor((%s*)this);\n",
           protocol_name);
 
   xprintf(out, "  return (%s*)this;\n}\n", protocol_name);
