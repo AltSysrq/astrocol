@@ -415,6 +415,20 @@ static int is_void(const char* type) {
     !*type;
 }
 
+static int is_string(const char* type) {
+  /* Optional leading const */
+  skip_whitespace(&type);
+  scan_str(&type, "const");
+  skip_whitespace(&type);
+
+  return
+    scan_str(&type, "char") &&
+    skip_whitespace(&type) &&
+    scan_str(&type, "*") &&
+    skip_whitespace(&type) &&
+    !*type;
+}
+
 static void write_callsite_args(FILE* out, field* field) {
   if (!field) return;
 
@@ -469,6 +483,65 @@ static void gen_impl_returns_this(FILE* out, method* meth, element* elt) {
 static void gen_impl_does_nothing(FILE* out, method* meth, element* elt) {
 }
 
+static void gen_impl_graphviz_node_for_member(FILE* out, method* meth,
+                                              field* member) {
+  if (!member) return;
+
+  gen_impl_graphviz_node_for_member(out, meth, member->next);
+
+  if (':' == member->name[0]) return;
+
+  xprintf(out, "  fprintf(out, \"<b>%s</b>: \");\n", member->name);
+
+  if (is_string(member->type)) {
+    xprintf(out, "  for (str = this->%s; str && *str; ++str)\n", member->name);
+    xprintf(out, "    if (strchr(\"<>&\\\"\", *str))\n");
+    xprintf(out, "      fprintf(out, \"&#x%%02x\", (unsigned int)*str);\n");
+    xprintf(out, "    else\n");
+    xprintf(out, "      fputc(*str, out);\n");
+    xprintf(out, "  if (!this->%s)\n", member->name);
+    xprintf(out, "    fprintf(out, \"<b>NULL</b>\");\n");
+  } else {
+    xprintf(out, "  fprintf(out, \"%%llX\", (unsigned long long)this->%s);\n",
+            member->name);
+  }
+
+  xprintf(out, "  fprintf(out, \"<br />\");\n");
+}
+
+static void gen_impl_graphviz_edge_for_member(FILE* out, method* meth,
+                                              field* member) {
+  if (!member) return;
+
+  gen_impl_graphviz_edge_for_member(out, meth, member->next);
+
+  if (is_protocol_instance(member->type)) {
+    xprintf(out, "  if (this->%s) {\n", member->name);
+    xprintf(out, "    fprintf(out, \"\\\"%%p\\\" -> \\\"%%p\\\""
+            "[label=\\\"%s\\\"];\\n\","
+            " this, this->%s);\n", member->name, member->name);
+    xprintf(out, "    %s(this->%s, out);\n", meth->name, member->name);
+    xprintf(out, "  }\n");
+  }
+}
+
+static void gen_impl_graphviz(FILE* out, method* meth, element* elt) {
+  /* We need to declare a "str" variable if any member is a string */
+  field* mem;
+  for (mem = elt->members; mem; mem = mem->next) {
+    if (is_string(mem->type)) {
+      xprintf(out, "  const char* str;\n");
+      break;
+    }
+  }
+
+  xprintf(out, "  fprintf(out, \"\\\"%%p\\\" [shape=box,label=<\", this);\n");
+  xprintf(out, "  fprintf(out, \"<u>%s</u><br />\");\n", elt->name);
+  gen_impl_graphviz_node_for_member(out, meth, elt->members);
+  xprintf(out, "  fprintf(out, \">];\\n\");\n");
+  gen_impl_graphviz_edge_for_member(out, meth, elt->members);
+}
+
 static void (*const gen_impl_funs[])(FILE*, method*, element*) = {
   gen_impl_recursive,
   gen_impl_visit_parent,
@@ -478,6 +551,7 @@ static void (*const gen_impl_funs[])(FILE*, method*, element*) = {
   gen_impl_does_nothing,
   NULL,
   NULL,
+  gen_impl_graphviz,
 };
 
 static void define_implementations_for_element(FILE* out, element* elt) {

@@ -128,6 +128,16 @@ truly interesting methods must be implemented manually.
   source by using the protocol name in place of an element name, though the
   usefulness of such a default implementation is questionable.
 
+- `graphviz` --- Generates an implementation which produces part of a GraphViz
+  graph, showing the relationship between this element and its children, as
+  well as the values of its fields. It is implicitly recursive. The resulting
+  output still needs to be surrounded by `graphviz {` ... `}` in order to be
+  valid GraphViz input. In order for this method to work, the method should
+  return void, and must have exactly one argument named `out`, which is of type
+  `FILE*`. These reqirements are not checked at processing time. This
+  implementation requires the compiler to support `long long` and that you
+  `#include <stdio.h>` somewhere.
+
 File Format
 -----------
 Astrocol takes a YAML document as input. The top-level element is a mapping

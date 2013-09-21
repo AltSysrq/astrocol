@@ -52,7 +52,8 @@ typedef enum {
   mit_returns_this,
   mit_does_nothing,
   mit_undefined,
-  mit_custom
+  mit_custom,
+  mit_graphviz
 } method_impl_type;
 
 typedef struct {

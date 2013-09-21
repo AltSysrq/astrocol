@@ -270,6 +270,7 @@ static const struct {
   { "do nothing", mit_does_nothing },
   { "undefined", mit_undefined },
   { "custom", mit_custom },
+  { "graphviz", mit_graphviz },
   { NULL }
 };
 
