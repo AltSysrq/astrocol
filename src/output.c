@@ -734,9 +734,8 @@ static void define_protocol_context(FILE* out) {
           "  %s_context_t* context = (%s_context_t*)context_;\n"
           "  %s* item, * next;\n"
           "  for (item = context->last; item; item = next) {\n"
-          "    (*item->dtor)(item);\n"
           "    next = item->gc_next;\n"
-          "    free(item);\n"
+          "    (*item->dtor)(item);\n"
           "  }\n"
           "}\n",
           protocol_name, protocol_name,
