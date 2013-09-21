@@ -73,6 +73,7 @@ static void declare_element_ctors(FILE*);
 static void declare_protocol_custom_defaults(FILE*);
 static void declare_method_impls(FILE*);
 static void declare_memman_funs(FILE*);
+static void define_element_types(FILE*);
 void write_header(FILE* output) {
   xprintf(output,
           "/*\n"
@@ -94,6 +95,7 @@ void write_header(FILE* output) {
   declare_protocol_custom_defaults(output);
   declare_method_impls(output);
   declare_memman_funs(output);
+  define_element_types(output);
 
   xprintf(output, "#endif\n");
 }
@@ -214,7 +216,6 @@ static void declare_memman_funs(FILE* out) {
 
 static void define_protocol_vcalls(FILE*);
 static void define_element_vtables(FILE*);
-static void define_element_types(FILE*);
 static void define_implementations(FILE*);
 static void define_element_ctors(FILE*);
 static void define_protocol_context(FILE*);
@@ -249,7 +250,6 @@ void write_impl(FILE* out) {
           protocol_name);
   define_protocol_vcalls(out);
   define_element_vtables(out);
-  define_element_types(out);
   define_implementations(out);
   define_element_ctors(out);
   define_protocol_context(out);
