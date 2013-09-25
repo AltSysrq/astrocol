@@ -443,7 +443,8 @@ static void gen_impl_recursive_for_member(FILE* out, method* meth,
   gen_impl_recursive_for_member(out, meth, member->next);
 
   if (is_protocol_instance(member->type)) {
-    xprintf(out, "%s(this->%s", meth->name, member->name);
+    xprintf(out, "if (this->%s)\n", member->name);
+    xprintf(out, "  %s(this->%s", meth->name, member->name);
     write_callsite_args(out, meth->fields);
     xprintf(out, ");\n");
   }
