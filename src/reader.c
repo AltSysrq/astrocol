@@ -286,7 +286,7 @@ static void read_method_impl(method_impl* impl,
   EXPECT(evt, YAML_SCALAR_EVENT);
   impl_name = (const char*)evt.data.scalar.value;
 
-  for (i = 0; ; ++i) {
+  for (i = 0; method_impl_names[i].key; ++i) {
     if (0 == strcmp(impl_name, method_impl_names[i].key)) {
       impl->type = method_impl_names[i].value;
       impl->implemented_by = caller_name;
